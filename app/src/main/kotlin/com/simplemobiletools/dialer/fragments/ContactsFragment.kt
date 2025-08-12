@@ -38,23 +38,18 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
 
         binding.fragmentPlaceholder.text = context.getString(placeholderResId)
 
-        val placeholderActionResId = if (context.hasPermission(PERMISSION_READ_CONTACTS)) {
-            R.string.create_new_contact
-        } else {
-            R.string.request_access
-        }
+        if (!context.hasPermission(PERMISSION_READ_CONTACTS)) {
+            binding.fragmentPlaceholder2.apply {
+                text = context.getString(R.string.request_access)
+                underlineText()
+                setOnClickListener {
+                        requestReadContactsPermission()
 
-        binding.fragmentPlaceholder2.apply {
-            text = context.getString(placeholderActionResId)
-            underlineText()
-            setOnClickListener {
-                if (context.hasPermission(PERMISSION_READ_CONTACTS)) {
-                    activity?.launchCreateNewContactIntent()
-                } else {
-                    requestReadContactsPermission()
                 }
             }
         }
+
+
     }
 
     override fun setupColors(textColor: Int, primaryColor: Int, properPrimaryColor: Int) {
@@ -178,7 +173,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
         activity?.handlePermission(PERMISSION_READ_CONTACTS) {
             if (it) {
                 binding.fragmentPlaceholder.text = context.getString(R.string.no_contacts_found)
-                binding.fragmentPlaceholder2.text = context.getString(R.string.create_new_contact)
+//                binding.fragmentPlaceholder2.text = context.getString(R.string.create_new_contact)
                 ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
                     activity?.runOnUiThread {
                         gotContacts(contacts)
