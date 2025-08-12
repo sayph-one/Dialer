@@ -67,6 +67,7 @@ class RecentsFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
 
                 allRecentCalls = recents
+                    .onlyFromKnownContacts(contacts, privateContacts)
                     .setNamesIfEmpty(contacts, privateContacts)
                     .hidePrivateContacts(privateContacts, SMT_PRIVATE in context.baseConfig.ignoredContactSources)
 
@@ -132,6 +133,7 @@ class RecentsFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
 
                 allRecentCalls = recents
+                    .onlyFromKnownContacts(contacts, privateContacts)
                     .setNamesIfEmpty(contacts, privateContacts)
                     .hidePrivateContacts(privateContacts, SMT_PRIVATE in context.baseConfig.ignoredContactSources)
 
@@ -203,4 +205,19 @@ private fun List<RecentCall>.setNamesIfEmpty(contacts: List<Contact>, privateCon
             recent
         }
     } as ArrayList
+}
+
+// helper at bottom of the file (near your other extensions)
+private fun List<RecentCall>.onlyFromKnownContacts( contacts: List<Contact>, privateContacts: List<Contact>): List<RecentCall> {
+    // build a set of normalized numbers from all contacts
+    val knownNumbers = (contacts + privateContacts)
+        .flatMap { it.phoneNumbers }
+        .mapNotNull { it.normalizedNumber?.normalizePhoneNumber()?.takeIf { num -> num.isNotEmpty() } }
+        .toSet()
+
+    return filter { recent ->
+        val num = recent.phoneNumber.normalizePhoneNumber()
+        // keep only if number is present and in contacts
+        num.isNotEmpty() && num in knownNumbers
+    }
 }
