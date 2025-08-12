@@ -103,7 +103,7 @@ class MainActivity : SimpleActivity() {
         updateMenuColors()
         val properPrimaryColor = getProperPrimaryColor()
         val dialpadIcon = resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, properPrimaryColor.getContrastColor())
-        binding.mainDialpadButton.setImageDrawable(dialpadIcon)
+//        binding.mainDialpadButton.setImageDrawable(dialpadIcon)
 
         updateTextColors(binding.mainHolder)
         setupTabColors()
@@ -384,9 +384,9 @@ class MainActivity : SimpleActivity() {
             }, 100L)
         }
 
-        binding.mainDialpadButton.setOnClickListener {
-            launchDialpad()
-        }
+//        binding.mainDialpadButton.setOnClickListener {
+//            launchDialpad()
+//        }
 
         binding.viewPager.onGlobalLayout {
             refreshMenuItems()
