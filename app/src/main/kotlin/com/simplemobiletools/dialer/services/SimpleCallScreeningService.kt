@@ -15,12 +15,17 @@ class SimpleCallScreeningService : CallScreeningService() {
 
     override fun onScreenCall(callDetails: Call.Details) {
         val number = callDetails.handle?.schemeSpecificPart
+
+        // Force flags to block unknown / hidden callers
+        val blockUnknown = true
+        val blockHidden  = true
+
         when {
             number != null && isNumberBlocked(number.normalizePhoneNumber()) -> {
                 respondToCall(callDetails, isBlocked = true)
             }
 
-            number != null && baseConfig.blockUnknownNumbers -> {
+            number != null && blockUnknown -> {
                 val simpleContactsHelper = SimpleContactsHelper(this)
                 val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
                 simpleContactsHelper.exists(number, privateCursor) { exists ->
@@ -28,7 +33,7 @@ class SimpleCallScreeningService : CallScreeningService() {
                 }
             }
 
-            number == null && baseConfig.blockHiddenNumbers -> {
+            number == null && blockHidden -> {
                 respondToCall(callDetails, isBlocked = true)
             }
 
@@ -45,7 +50,6 @@ class SimpleCallScreeningService : CallScreeningService() {
             .setSkipCallLog(isBlocked)
             .setSkipNotification(isBlocked)
             .build()
-
         respondToCall(callDetails, response)
     }
 }

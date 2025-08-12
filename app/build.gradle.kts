@@ -20,6 +20,14 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
+
+    configurations.all {
+        resolutionStrategy {
+            force("com.github.duolingo:rtl-viewpager:1.0.2")
+        }
+    }
+
+
     compileSdk = project.libs.versions.app.build.compileSDKVersion.get().toInt()
 
     defaultConfig {
