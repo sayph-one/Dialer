@@ -392,10 +392,10 @@ class MainActivity : SimpleActivity() {
             refreshMenuItems()
         }
 
-        if (config.openDialPadAtLaunch && !launchedDialer) {
-            launchDialpad()
-            launchedDialer = true
-        }
+//        if (config.openDialPadAtLaunch && !launchedDialer) {
+//            launchDialpad()
+//            launchedDialer = true
+//        }
     }
 
     private fun setupTabs() {
