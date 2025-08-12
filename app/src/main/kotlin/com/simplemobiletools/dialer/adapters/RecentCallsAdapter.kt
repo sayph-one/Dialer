@@ -58,13 +58,13 @@ class RecentCallsAdapter(
         val selectedNumber = "tel:${getSelectedPhoneNumber()}"
 
         menu.apply {
-            findItem(R.id.cab_call_sim_1).isVisible = hasMultipleSIMs && isOneItemSelected
-            findItem(R.id.cab_call_sim_2).isVisible = hasMultipleSIMs && isOneItemSelected
-            findItem(R.id.cab_remove_default_sim).isVisible = isOneItemSelected && (activity.config.getCustomSIM(selectedNumber) ?: "") != ""
+            // findItem(R.id.cab_call_sim_1).isVisible = hasMultipleSIMs && isOneItemSelected
+            // findItem(R.id.cab_call_sim_2).isVisible = hasMultipleSIMs && isOneItemSelected
+//            findItem(R.id.cab_remove_default_sim).isVisible = false
 
-            findItem(R.id.cab_block_number).title = activity.addLockedLabelIfNeeded(R.string.block_number)
-            findItem(R.id.cab_block_number).isVisible = isNougatPlus()
-            findItem(R.id.cab_add_number).isVisible = isOneItemSelected
+            // findItem(R.id.cab_block_number).title = activity.addLockedLabelIfNeeded(R.string.block_number)
+            // findItem(R.id.cab_block_number).isVisible = false
+            // findItem(R.id.cab_add_number).isVisible = false
             findItem(R.id.cab_copy_number).isVisible = isOneItemSelected
             findItem(R.id.cab_show_call_details).isVisible = isOneItemSelected
             findItem(R.id.cab_view_details).isVisible = isOneItemSelected && findContactByCall(selectedItems.first()) != null
@@ -77,15 +77,15 @@ class RecentCallsAdapter(
         }
 
         when (id) {
-            R.id.cab_call_sim_1 -> callContact(true)
-            R.id.cab_call_sim_2 -> callContact(false)
-            R.id.cab_remove_default_sim -> removeDefaultSIM()
-            R.id.cab_block_number -> tryBlocking()
-            R.id.cab_add_number -> addNumberToContact()
+            // R.id.cab_call_sim_1 -> callContact(true)
+            // R.id.cab_call_sim_2 -> callContact(false)
+//            R.id.cab_remove_default_sim -> removeDefaultSIM()
+            // R.id.cab_block_number -> tryBlocking()
+            // R.id.cab_add_number -> addNumberToContact()
             R.id.cab_send_sms -> sendSMS()
             R.id.cab_show_call_details -> showCallDetails()
             R.id.cab_copy_number -> copyNumber()
-            R.id.cab_remove -> askConfirmRemove()
+            // R.id.cab_remove -> askConfirmRemove()
             R.id.cab_select_all -> selectAll()
             R.id.cab_view_details -> launchContactDetailsIntent(findContactByCall(getSelectedItems().first()))
         }
@@ -368,16 +368,16 @@ class RecentCallsAdapter(
             menu.apply {
                 val areMultipleSIMsAvailable = activity.areMultipleSIMsAvailable()
                 findItem(R.id.cab_call).isVisible = !areMultipleSIMsAvailable && !call.isUnknownNumber
-                findItem(R.id.cab_call_sim_1).isVisible = areMultipleSIMsAvailable && !call.isUnknownNumber
-                findItem(R.id.cab_call_sim_2).isVisible = areMultipleSIMsAvailable && !call.isUnknownNumber
+                // findItem(R.id.cab_call_sim_1).isVisible = areMultipleSIMsAvailable && !call.isUnknownNumber
+                // findItem(R.id.cab_call_sim_2).isVisible = areMultipleSIMsAvailable && !call.isUnknownNumber
                 findItem(R.id.cab_send_sms).isVisible = !call.isUnknownNumber
                 findItem(R.id.cab_view_details).isVisible = contact != null && !call.isUnknownNumber
-                findItem(R.id.cab_add_number).isVisible = !call.isUnknownNumber
+                // findItem(R.id.cab_add_number).isVisible = false
                 findItem(R.id.cab_copy_number).isVisible = !call.isUnknownNumber
                 findItem(R.id.cab_show_call_details).isVisible = !call.isUnknownNumber
-                findItem(R.id.cab_block_number).title = activity.addLockedLabelIfNeeded(R.string.block_number)
-                findItem(R.id.cab_block_number).isVisible = isNougatPlus() && !call.isUnknownNumber
-                findItem(R.id.cab_remove_default_sim).isVisible = (activity.config.getCustomSIM(selectedNumber) ?: "") != "" && !call.isUnknownNumber
+                // findItem(R.id.cab_block_number).title = activity.addLockedLabelIfNeeded(R.string.block_number)
+                // findItem(R.id.cab_block_number).isVisible = false
+//                findItem(R.id.cab_remove_default_sim).isVisible = false
             }
 
             setOnMenuItemClickListener { item ->
@@ -389,17 +389,17 @@ class RecentCallsAdapter(
                         }
                     }
 
-                    R.id.cab_call_sim_1 -> {
-                        executeItemMenuOperation(callId) {
-                            callContact(true)
-                        }
-                    }
+                    // R.id.cab_call_sim_1 -> {
+                    //     executeItemMenuOperation(callId) {
+                    //         callContact(true)
+                    //     }
+                    // }
 
-                    R.id.cab_call_sim_2 -> {
-                        executeItemMenuOperation(callId) {
-                            callContact(false)
-                        }
-                    }
+                    // R.id.cab_call_sim_2 -> {
+                    //     executeItemMenuOperation(callId) {
+                    //         callContact(false)
+                    //     }
+                    // }
 
                     R.id.cab_send_sms -> {
                         executeItemMenuOperation(callId) {
@@ -413,11 +413,11 @@ class RecentCallsAdapter(
                         }
                     }
 
-                    R.id.cab_add_number -> {
-                        executeItemMenuOperation(callId) {
-                            addNumberToContact()
-                        }
-                    }
+                    // R.id.cab_add_number -> {
+                    //     executeItemMenuOperation(callId) {
+                    //         addNumberToContact()
+                    //     }
+                    // }
 
                     R.id.cab_show_call_details -> {
                         executeItemMenuOperation(callId) {
@@ -425,15 +425,15 @@ class RecentCallsAdapter(
                         }
                     }
 
-                    R.id.cab_block_number -> {
-                        selectedKeys.add(callId)
-                        tryBlocking()
-                    }
+                    // R.id.cab_block_number -> {
+                    //     selectedKeys.add(callId)
+                    //     tryBlocking()
+                    // }
 
-                    R.id.cab_remove -> {
-                        selectedKeys.add(callId)
-                        askConfirmRemove()
-                    }
+                    // R.id.cab_remove -> {
+                    //     selectedKeys.add(callId)
+                    //     askConfirmRemove()
+                    // }
 
                     R.id.cab_copy_number -> {
                         executeItemMenuOperation(callId) {
@@ -441,17 +441,18 @@ class RecentCallsAdapter(
                         }
                     }
 
-                    R.id.cab_remove_default_sim -> {
-                        executeItemMenuOperation(callId) {
-                            removeDefaultSIM()
-                        }
-                    }
+//                    R.id.cab_remove_default_sim -> {
+//                        executeItemMenuOperation(callId) {
+//                            removeDefaultSIM()
+//                        }
+//                    }
                 }
                 true
             }
             show()
         }
     }
+
 
     private fun executeItemMenuOperation(callId: Int, callback: () -> Unit) {
         selectedKeys.add(callId)
