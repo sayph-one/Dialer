@@ -1,6 +1,7 @@
 package com.simplemobiletools.dialer.fragments
 
 import android.content.Context
+import android.provider.ContactsContract
 import android.util.AttributeSet
 import com.simplemobiletools.commons.dialogs.CallConfirmationDialog
 import com.simplemobiletools.commons.extensions.*
@@ -15,6 +16,7 @@ import com.simplemobiletools.dialer.activities.SimpleActivity
 import com.simplemobiletools.dialer.adapters.RecentCallsAdapter
 import com.simplemobiletools.dialer.databinding.FragmentRecentsBinding
 import com.simplemobiletools.dialer.extensions.config
+import com.simplemobiletools.dialer.helpers.ContactFiltering
 import com.simplemobiletools.dialer.helpers.MIN_RECENTS_THRESHOLD
 import com.simplemobiletools.dialer.helpers.RecentsHelper
 import com.simplemobiletools.dialer.interfaces.RefreshItemsListener
@@ -64,12 +66,17 @@ class RecentsFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val querySize = allRecentCalls.size.coerceAtLeast(MIN_RECENTS_THRESHOLD)
         RecentsHelper(context).getRecentCalls(groupSubsequentCalls, querySize) { recents ->
             ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+                // Filter contacts to exclude SIM contacts
+                val filteredContacts = ContactFiltering.filterDeviceContacts(context, contacts)
+
                 val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
+                // Also filter private contacts
+                val filteredPrivateContacts = ContactFiltering.filterDeviceContacts(context, privateContacts)
 
                 allRecentCalls = recents
-                    .onlyFromKnownContacts(contacts, privateContacts)
-                    .setNamesIfEmpty(contacts, privateContacts)
-                    .hidePrivateContacts(privateContacts, SMT_PRIVATE in context.baseConfig.ignoredContactSources)
+                    .onlyFromKnownContacts(context, filteredContacts, filteredPrivateContacts)
+                    .setNamesIfEmpty(filteredContacts, filteredPrivateContacts)
+                    .hidePrivateContacts(filteredPrivateContacts, SMT_PRIVATE in context.baseConfig.ignoredContactSources)
 
                 activity?.runOnUiThread {
                     gotRecents(allRecentCalls)
@@ -130,12 +137,17 @@ class RecentsFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val querySize = allRecentCalls.size.plus(MIN_RECENTS_THRESHOLD)
         RecentsHelper(context).getRecentCalls(groupSubsequentCalls, querySize) { recents ->
             ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+                // Filter contacts to exclude SIM contacts
+                val filteredContacts = ContactFiltering.filterDeviceContacts(context, contacts)
+
                 val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
+                // Also filter private contacts
+                val filteredPrivateContacts = ContactFiltering.filterDeviceContacts(context, privateContacts)
 
                 allRecentCalls = recents
-                    .onlyFromKnownContacts(contacts, privateContacts)
-                    .setNamesIfEmpty(contacts, privateContacts)
-                    .hidePrivateContacts(privateContacts, SMT_PRIVATE in context.baseConfig.ignoredContactSources)
+                    .onlyFromKnownContacts(context, filteredContacts, filteredPrivateContacts)
+                    .setNamesIfEmpty(filteredContacts, filteredPrivateContacts)
+                    .hidePrivateContacts(filteredPrivateContacts, SMT_PRIVATE in context.baseConfig.ignoredContactSources)
 
                 activity?.runOnUiThread {
                     gotRecents(allRecentCalls)
@@ -207,17 +219,68 @@ private fun List<RecentCall>.setNamesIfEmpty(contacts: List<Contact>, privateCon
     } as ArrayList
 }
 
-// helper at bottom of the file (near your other extensions)
-private fun List<RecentCall>.onlyFromKnownContacts( contacts: List<Contact>, privateContacts: List<Contact>): List<RecentCall> {
-    // build a set of normalized numbers from all contacts
-    val knownNumbers = (contacts + privateContacts)
-        .flatMap { it.phoneNumbers }
-        .mapNotNull { it.normalizedNumber?.normalizePhoneNumber()?.takeIf { num -> num.isNotEmpty() } }
-        .toSet()
-
+private fun List<RecentCall>.onlyFromKnownContacts(context: Context, contacts: List<Contact>, privateContacts: List<Contact>): List<RecentCall> {
     return filter { recent ->
-        val num = recent.phoneNumber.normalizePhoneNumber()
-        // keep only if number is present and in contacts
-        num.isNotEmpty() && num in knownNumbers
+        val normalizedNumber = recent.phoneNumber.normalizePhoneNumber()
+        // Keep only if number is not empty and is saved to device (not SIM)
+        normalizedNumber.isNotEmpty() && ContactFiltering.isContactSavedToDevice(context, normalizedNumber)
     }
+}
+
+private fun isContactSavedToDevice(context: Context, phoneNumber: String): Boolean {
+    if (phoneNumber.isEmpty()) return false
+
+    // Common SIM account types across different manufacturers
+    val simAccountTypes = setOf(
+        "com.android.contacts.sim",     // Standard Android
+        "vnd.sec.contact.sim",          // Samsung
+        "com.android.sim",              // Some Android variants
+        "sim",                          // Generic
+        "SIM"                           // Case variant
+    )
+
+    // Normalize the phone number for comparison
+    val normalizedNumber = phoneNumber.normalizePhoneNumber()
+
+    // First, get contact IDs that match the phone number
+    val lookupUri = ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon()
+        .appendPath(normalizedNumber)
+        .build()
+
+    val contactIds = mutableSetOf<String>()
+
+    context.contentResolver.query(
+        lookupUri,
+        arrayOf(ContactsContract.PhoneLookup.CONTACT_ID),
+        null,
+        null,
+        null
+    )?.use { cursor ->
+        while (cursor.moveToNext()) {
+            val contactId = cursor.getString(0)
+            contactIds.add(contactId)
+        }
+    }
+
+    if (contactIds.isEmpty()) return false
+
+    // Now check if any of these contacts are stored on device (not SIM)
+    val contactIdsList = contactIds.joinToString(",")
+
+    // Create dynamic filter for all known SIM account types
+    val simAccountTypesPlaceholders = simAccountTypes.joinToString(",") { "?" }
+    val selectionArgs = simAccountTypes.toTypedArray()
+
+    context.contentResolver.query(
+        ContactsContract.RawContacts.CONTENT_URI,
+        arrayOf(ContactsContract.RawContacts._ID),
+        "${ContactsContract.RawContacts.CONTACT_ID} IN ($contactIdsList) AND " +
+            "(${ContactsContract.RawContacts.ACCOUNT_TYPE} NOT IN ($simAccountTypesPlaceholders) OR ${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL)",
+        selectionArgs,
+        null
+    )?.use { cursor ->
+        return cursor.count > 0
+    }
+
+    return false
 }

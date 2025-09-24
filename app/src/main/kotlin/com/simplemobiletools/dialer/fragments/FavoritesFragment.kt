@@ -17,6 +17,7 @@ import com.simplemobiletools.dialer.adapters.ContactsAdapter
 import com.simplemobiletools.dialer.databinding.FragmentFavoritesBinding
 import com.simplemobiletools.dialer.databinding.FragmentLettersLayoutBinding
 import com.simplemobiletools.dialer.extensions.config
+import com.simplemobiletools.dialer.helpers.ContactFiltering
 import com.simplemobiletools.dialer.helpers.Converters
 import com.simplemobiletools.dialer.interfaces.RefreshItemsListener
 import java.util.Locale
@@ -58,7 +59,9 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
 
     override fun refreshItems(callback: (() -> Unit)?) {
         ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
-            allContacts = contacts
+            // Filter out SIM contacts first
+            var filteredContacts = ContactFiltering.filterDeviceContacts(context, contacts)
+            allContacts = filteredContacts
 
             if (SMT_PRIVATE !in context.baseConfig.ignoredContactSources) {
                 val privateCursor = context?.getMyContactsCursor(true, true)
@@ -66,11 +69,15 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
                     it.copy(starred = 1)
                 }
                 if (privateContacts.isNotEmpty()) {
-                    allContacts.addAll(privateContacts)
+                    // Also filter private contacts for SIM contacts
+                    val filteredPrivateContacts = ContactFiltering.filterDeviceContacts(context, privateContacts)
+                    allContacts.addAll(filteredPrivateContacts)
                     allContacts.sort()
                 }
             }
-            val favorites = contacts.filter { it.starred == 1 } as ArrayList<Contact>
+
+            // Now filter for favorites (starred contacts) from the already SIM-filtered contacts
+            val favorites = allContacts.filter { it.starred == 1 } as ArrayList<Contact>
 
             allContacts = if (activity!!.config.isCustomOrderSelected) {
                 sortByCustomOrder(favorites)
@@ -84,6 +91,7 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
             }
         }
     }
+
 
     private fun gotContacts(contacts: ArrayList<Contact>) {
         setupLetterFastScroller(contacts)

@@ -9,6 +9,7 @@ import com.simplemobiletools.commons.extensions.getMyContactsCursor
 import com.simplemobiletools.commons.extensions.isNumberBlocked
 import com.simplemobiletools.commons.extensions.normalizePhoneNumber
 import com.simplemobiletools.commons.helpers.SimpleContactsHelper
+import com.simplemobiletools.dialer.helpers.ContactFiltering
 
 @RequiresApi(Build.VERSION_CODES.N)
 class SimpleCallScreeningService : CallScreeningService() {
@@ -26,10 +27,16 @@ class SimpleCallScreeningService : CallScreeningService() {
             }
 
             number != null && blockUnknown -> {
-                val simpleContactsHelper = SimpleContactsHelper(this)
-                val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-                simpleContactsHelper.exists(number, privateCursor) { exists ->
-                    respondToCall(callDetails, isBlocked = !exists)
+                // Check if contact exists and is saved to device (not SIM)
+                val normalizedNumber = number.normalizePhoneNumber()
+                val isDeviceContact = ContactFiltering.isContactSavedToDevice(this, normalizedNumber)
+
+                if (isDeviceContact) {
+                    // Contact exists in device storage, allow the call
+                    respondToCall(callDetails, isBlocked = false)
+                } else {
+                    // Either no contact found, or contact is only on SIM - block the call
+                    respondToCall(callDetails, isBlocked = true)
                 }
             }
 

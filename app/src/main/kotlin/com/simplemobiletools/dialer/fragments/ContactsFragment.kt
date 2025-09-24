@@ -15,6 +15,7 @@ import com.simplemobiletools.dialer.databinding.FragmentContactsBinding
 import com.simplemobiletools.dialer.databinding.FragmentLettersLayoutBinding
 import com.simplemobiletools.dialer.extensions.launchCreateNewContactIntent
 import com.simplemobiletools.dialer.extensions.startContactDetailsIntent
+import com.simplemobiletools.dialer.helpers.ContactFiltering
 import com.simplemobiletools.dialer.interfaces.RefreshItemsListener
 import java.util.Locale
 
@@ -69,19 +70,22 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     override fun refreshItems(callback: (() -> Unit)?) {
         val privateCursor = context?.getMyContactsCursor(false, true)
         ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
-            allContacts = contacts
+            // Filter out SIM contacts
+            allContacts = ContactFiltering.filterDeviceContacts(context, contacts)
 
             if (SMT_PRIVATE !in context.baseConfig.ignoredContactSources) {
                 val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
                 if (privateContacts.isNotEmpty()) {
-                    allContacts.addAll(privateContacts)
+                    // Also filter private contacts
+                    val filteredPrivateContacts = ContactFiltering.filterDeviceContacts(context, privateContacts)
+                    allContacts.addAll(filteredPrivateContacts)
                     allContacts.sort()
                 }
             }
             (activity as MainActivity).cacheContacts(allContacts)
 
             activity?.runOnUiThread {
-                gotContacts(contacts)
+                gotContacts(allContacts)
                 callback?.invoke()
             }
         }
