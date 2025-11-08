@@ -5,7 +5,7 @@ kotlinxSerializationJson = "1.5.1"
 #Simple tools
 simple-commons = "eceb48949e"
 #Gradle
-gradlePlugins-agp = "8.9.2"
+gradlePlugins-agp = "8.13.0"
 #Other
 indicatorFastScroll = "4524cd0b61"
 autofitTextView = "0.2.1"
@@ -17,8 +17,8 @@ app-build-javaVersion = "VERSION_17"
 app-build-kotlinJVMTarget = "17"
 #versioning
 app-version-appId = "com.simplemobiletools.dialer"
-app-version-versionCode = "62" # update this for increment version in knox
-app-version-versionName = "5.18.2"
+app-version-versionCode = "66" # update this for increment version in knox
+app-version-versionName = "5.18.66"
 [libraries]
 #Simple Mobile Tools
 simple-tools-commons = { module = "com.github.SimpleMobileTools:Simple-Commons", version.ref = "simple-commons" }

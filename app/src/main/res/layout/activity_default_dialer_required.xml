@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/blocking_screen_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#132d4d"
+    android:clickable="false"
+    android:focusable="false"
+    android:focusableInTouchMode="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:background="#132d4d"
+        android:clickable="false"
+        android:focusable="false">
+
+        <!-- Icon - large call icon with lighter blue circle background -->
+        <ImageView
+            android:id="@+id/blocking_icon"
+            android:layout_width="160dp"
+            android:layout_height="160dp"
+            android:layout_marginBottom="64dp"
+            android:contentDescription="@string/app_launcher_name"
+            android:src="@drawable/ic_call_with_background" />
+
+        <!-- Security Note with consolidated message -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="48dp"
+            android:background="@drawable/blocking_info_background"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.2"
+                android:text="@string/default_dialer_blocking_message"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp" />
+        </LinearLayout>
+
+        <!-- Set Default Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/blocking_set_default_button"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:clickable="true"
+            android:enabled="true"
+            android:focusable="true"
+            android:text="@string/set_as_default"
+            android:textAllCaps="false"
+            android:textColor="#132d4d"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="8dp"
+            app:elevation="4dp" />
+
+    </LinearLayout>
+
+</RelativeLayout>

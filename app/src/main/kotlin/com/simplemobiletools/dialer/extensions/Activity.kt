@@ -15,6 +15,7 @@ import com.simplemobiletools.commons.models.contacts.Contact
 import com.simplemobiletools.dialer.activities.DialerActivity
 import com.simplemobiletools.dialer.activities.SimpleActivity
 import com.simplemobiletools.dialer.dialogs.SelectSIMDialog
+import com.simplemobiletools.commons.helpers.REQUEST_CODE_SET_DEFAULT_DIALER
 
 fun SimpleActivity.startCallIntent(recipient: String) {
     if (isDefaultDialer()) {
@@ -65,6 +66,25 @@ fun Activity.startContactDetailsIntent(contact: Contact) {
                 launchViewContactIntent(publicUri)
             }
         }
+    }
+}
+
+// Launch the system Settings page to set this app as the default phone app
+fun SimpleActivity.launchSetDefaultDialerIntent() {
+    android.util.Log.d("DialerSettings", "launchSetDefaultDialerIntent called")
+
+    // Open this app's settings page where the user can set it as default
+    // This is the most reliable approach that works on all Android versions
+    try {
+        android.util.Log.d("DialerSettings", "Opening app settings page")
+        val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        intent.data = android.net.Uri.parse("package:$packageName")
+        startActivity(intent)
+        toast("Scroll down and tap 'Set as default' or 'Open by default'")
+    } catch (e: Exception) {
+        android.util.Log.e("DialerSettings", "Failed to open app settings: ${e.message}")
+        e.printStackTrace()
+        toast("Could not open settings. Please manually set this app as your default Phone app.")
     }
 }
 

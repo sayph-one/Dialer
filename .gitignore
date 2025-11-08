@@ -11,3 +11,6 @@ keystore.properties
 fastlane/fastlane.json
 Gemfile
 Gemfile.lock
+
+# Claude project documentation
+CLAUDE.md

@@ -100,17 +100,20 @@ object ContactFiltering {
         val simAccountTypesPlaceholders = SIM_ACCOUNT_TYPES.joinToString(",") { "?" }
         val selectionArgs = SIM_ACCOUNT_TYPES.toTypedArray()
 
+        // SECURITY FIX: Removed "OR ACCOUNT_TYPE IS NULL" clause
+        // NULL account types could be SIM contacts on some devices, so we require explicit non-SIM account types
         return context.contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
             arrayOf(ContactsContract.RawContacts._ID),
             "${ContactsContract.RawContacts.CONTACT_ID} IN ($contactIdsList) AND " +
-                "(${ContactsContract.RawContacts.ACCOUNT_TYPE} NOT IN ($simAccountTypesPlaceholders) OR ${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL)",
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NOT NULL AND " +
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE} NOT IN ($simAccountTypesPlaceholders)",
             selectionArgs,
             null
         )?.use { cursor ->
             val count = cursor.count
             if (enableDebugLogging) {
-                Log.d(TAG, "Filtered query (excluding all SIM types) returned $count results")
+                Log.d(TAG, "Filtered query (excluding all SIM types and NULL types) returned $count results")
             }
             count > 0
         } ?: false

@@ -11,6 +11,7 @@ import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.provider.Settings
+import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -33,6 +34,7 @@ import com.simplemobiletools.dialer.dialogs.ChangeSortingDialog
 import com.simplemobiletools.dialer.dialogs.FilterContactSourcesDialog
 import com.simplemobiletools.dialer.extensions.config
 import com.simplemobiletools.dialer.extensions.launchCreateNewContactIntent
+import com.simplemobiletools.dialer.extensions.launchSetDefaultDialerIntent
 import com.simplemobiletools.dialer.fragments.ContactsFragment
 import com.simplemobiletools.dialer.fragments.FavoritesFragment
 import com.simplemobiletools.dialer.fragments.MyViewPagerFragment
@@ -47,12 +49,19 @@ class MainActivity : SimpleActivity() {
     private var storedShowTabs = 0
     private var storedFontSize = 0
     private var storedStartNameWithSurname = false
+    private var blockingScreen: View? = null
     var cachedContacts = ArrayList<Contact>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         isMaterialActivity = true
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
+
+        // Set navigation bar color from the start to prevent white flash
+        val brandBlue = android.graphics.Color.parseColor("#132d4d")
+        window.navigationBarColor = brandBlue
+        window.statusBarColor = brandBlue
+
         appLaunched(BuildConfig.APPLICATION_ID)
         setupOptionsMenu()
         refreshMenuItems()
@@ -93,7 +102,25 @@ class MainActivity : SimpleActivity() {
     }
 
     override fun onResume() {
+        // Set navigation bar color IMMEDIATELY before anything else to prevent white flash
+        val brandBlue = android.graphics.Color.parseColor("#132d4d")
+        window.navigationBarColor = brandBlue
+        window.statusBarColor = brandBlue
+
         super.onResume()
+
+        // CRITICAL: Continuously enforce default dialer status
+        if (!isDefaultDialer()) {
+            // Show blocking screen if not already showing
+            if (blockingScreen == null || blockingScreen?.visibility != View.VISIBLE) {
+                showBlockingScreen()
+            }
+            return // Block all further initialization
+        }
+
+        // If we get here, we are the default dialer - hide blocking screen and show normal UI
+        hideBlockingScreen()
+
         if (storedShowTabs != config.showTabs) {
             config.lastUsedViewPagerPage = 0
             System.exit(0)
@@ -144,10 +171,22 @@ class MainActivity : SimpleActivity() {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, resultData: Intent?) {
+        // Set navigation bar color IMMEDIATELY to prevent white flash when returning from system picker
+        val brandBlue = android.graphics.Color.parseColor("#132d4d")
+        window.navigationBarColor = brandBlue
+        window.statusBarColor = brandBlue
+
         super.onActivityResult(requestCode, resultCode, resultData)
-        // we don't really care about the result, the app can work without being the default Dialer too
         if (requestCode == REQUEST_CODE_SET_DEFAULT_DIALER) {
-            checkContactPermissions()
+            // CRITICAL: We MUST be default dialer for call screening to work
+            if (!isDefaultDialer()) {
+                // User dismissed or declined - show blocking screen again
+                showBlockingScreen()
+            } else {
+                // Success! Hide blocking screen and show normal UI
+                hideBlockingScreen()
+                checkContactPermissions()
+            }
         } else if (requestCode == REQUEST_CODE_SET_DEFAULT_CALLER_ID && resultCode != Activity.RESULT_OK) {
             toast(R.string.must_make_default_caller_id_app, length = Toast.LENGTH_LONG)
             baseConfig.blockUnknownNumbers = false
@@ -166,6 +205,12 @@ class MainActivity : SimpleActivity() {
     }
 
     override fun onBackPressed() {
+        // If blocking screen is showing, don't allow back button to close app
+        // User must set as default or use home button
+        if (blockingScreen?.visibility == View.VISIBLE) {
+            return // Block back button when enforcement screen is active
+        }
+
         if (binding.mainMenu.isSearchOpen) {
             binding.mainMenu.closeSearch()
         } else {
@@ -609,5 +654,131 @@ class MainActivity : SimpleActivity() {
             cachedContacts.addAll(contacts)
         } catch (e: Exception) {
         }
+    }
+
+    private fun showBlockingScreen() {
+        android.util.Log.d("MainActivity", "===== SHOW BLOCKING SCREEN CALLED =====")
+
+        // Set status bar and navigation bar to brand blue - do it multiple times to ensure it sticks
+        setBlockingScreenColors()
+
+        window.decorView.postDelayed({ setBlockingScreenColors() }, 50)
+        window.decorView.postDelayed({ setBlockingScreenColors() }, 100)
+        window.decorView.postDelayed({ setBlockingScreenColors() }, 200)
+    }
+
+    private fun setBlockingScreenColors() {
+        val brandBlue = android.graphics.Color.parseColor("#132d4d")
+        window.statusBarColor = brandBlue
+        window.navigationBarColor = brandBlue
+
+        android.util.Log.d("MainActivity", "Set navigation bar color to: $brandBlue")
+
+        // Ensure system bars are visible and icons are light colored (for dark background)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            // Android 11+ - use WindowInsetsController
+            window.insetsController?.setSystemBarsAppearance(
+                0, // Clear both light status bar and navigation bar flags
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            )
+            android.util.Log.d("MainActivity", "Set appearance using WindowInsetsController")
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            // Android 8-10 - use systemUiVisibility
+            var flags = window.decorView.systemUiVisibility
+            flags = flags and android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+            flags = flags and android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+            window.decorView.systemUiVisibility = flags
+            android.util.Log.d("MainActivity", "Set appearance using systemUiVisibility")
+        }
+
+        // Hide normal app UI
+        binding.mainTabsHolder.beGone()
+        binding.viewPager.beGone()
+        binding.mainMenu.beGone()
+
+        // If blocking screen already exists, just make sure it's visible and re-attach listener
+        if (blockingScreen != null && blockingScreen?.parent != null) {
+            android.util.Log.d("MainActivity", "Blocking screen already exists, making visible")
+            blockingScreen?.visibility = View.VISIBLE
+            // Re-attach button listener in case it was lost
+            setupBlockingScreenButton()
+            return
+        }
+
+        // Remove any existing blocking screen from any parent
+        blockingScreen?.let { screen ->
+            android.util.Log.d("MainActivity", "Removing old blocking screen")
+            (screen.parent as? android.view.ViewGroup)?.removeView(screen)
+        }
+
+        // Inflate the blocking screen
+        android.util.Log.d("MainActivity", "Inflating new blocking screen")
+        blockingScreen = layoutInflater.inflate(R.layout.activity_default_dialer_required, null, false)
+
+        // Add to root layout with MATCH_PARENT to cover everything
+        android.util.Log.d("MainActivity", "Adding blocking screen to root")
+        binding.root.addView(blockingScreen, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+
+        // Set up the button click listener
+        android.util.Log.d("MainActivity", "Setting up button")
+        setupBlockingScreenButton()
+
+        // Make sure blocking screen is visible (but not intercepting button clicks)
+        blockingScreen?.apply {
+            visibility = View.VISIBLE
+            bringToFront()
+        }
+
+        android.util.Log.d("MainActivity", "===== BLOCKING SCREEN SETUP COMPLETE =====")
+    }
+
+    private fun setupBlockingScreenButton() {
+        val button = blockingScreen?.findViewById<com.google.android.material.button.MaterialButton>(R.id.blocking_set_default_button) ?: return
+
+        button.setOnClickListener {
+            android.util.Log.d("MainActivity", "Button clicked! - opening default apps settings")
+            try {
+                // Try to open the default apps settings page directly
+                val intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+                startActivity(intent)
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to open default apps settings: ${e.message}")
+                // Fallback to app settings page
+                try {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    intent.data = android.net.Uri.parse("package:$packageName")
+                    startActivity(intent)
+                } catch (e2: Exception) {
+                    android.util.Log.e("MainActivity", "Fallback also failed: ${e2.message}")
+                    toast("Could not open settings")
+                }
+            }
+        }
+    }
+
+    private fun hideBlockingScreen() {
+        // Restore original system bar colors
+        updateMaterialActivityViews(binding.mainCoordinator, binding.mainHolder, useTransparentNavigation = false, useTopSearchMenu = true)
+
+        // Hide/remove blocking screen
+        blockingScreen?.let {
+            it.visibility = View.GONE
+            binding.root.removeView(it)
+        }
+        blockingScreen = null
+
+        // Show normal app UI
+        binding.mainTabsHolder.beVisible()
+        binding.viewPager.beVisible()
+        binding.mainMenu.beVisible()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        blockingScreen = null
     }
 }

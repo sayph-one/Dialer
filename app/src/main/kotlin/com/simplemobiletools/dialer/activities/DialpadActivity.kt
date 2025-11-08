@@ -30,6 +30,7 @@ import com.simplemobiletools.dialer.databinding.ActivityDialpadBinding
 import com.simplemobiletools.dialer.extensions.*
 import com.simplemobiletools.dialer.helpers.DIALPAD_TONE_LENGTH_MS
 import com.simplemobiletools.dialer.helpers.ToneGeneratorHelper
+import com.simplemobiletools.dialer.helpers.ContactFiltering
 import com.simplemobiletools.dialer.models.SpeedDial
 import java.util.*
 import kotlin.math.roundToInt
@@ -180,6 +181,14 @@ class DialpadActivity : SimpleActivity() {
             letterFastscrollerThumb.setupWithFastScroller(letterFastscroller)
             letterFastscrollerThumb.textColor = properPrimaryColor.getContrastColor()
             letterFastscrollerThumb.thumbColor = properPrimaryColor.getColorStateList()
+
+            // Initialize call buttons as disabled (will be enabled when valid number is entered)
+            dialpadCallButton.isEnabled = false
+            dialpadCallButton.alpha = 0.3f
+            if (dialpadCallTwoButton.isVisible) {
+                dialpadCallTwoButton.isEnabled = false
+                dialpadCallTwoButton.alpha = 0.3f
+            }
         }
     }
 
@@ -251,8 +260,71 @@ class DialpadActivity : SimpleActivity() {
         }
     }
 
+    /**
+     * Validates if a phone number belongs to a device contact.
+     * Handles UK number format variations (+44 vs 07).
+     */
+    private fun isNumberInDeviceContacts(phoneNumber: String): Boolean {
+        if (phoneNumber.isEmpty()) return false
+
+        // Create a list of number variations to check
+        val numbersToCheck = mutableListOf(phoneNumber)
+
+        // Handle UK number format variations
+        when {
+            // +447xxx -> also check 07xxx
+            phoneNumber.startsWith("+447") -> {
+                numbersToCheck.add("0${phoneNumber.substring(3)}")
+            }
+            // 07xxx -> also check +447xxx
+            phoneNumber.startsWith("07") -> {
+                numbersToCheck.add("+44${phoneNumber.substring(1)}")
+            }
+            // 00447xxx -> also check 07xxx and +447xxx
+            phoneNumber.startsWith("00447") -> {
+                numbersToCheck.add("0${phoneNumber.substring(4)}")
+                numbersToCheck.add("+44${phoneNumber.substring(4)}")
+            }
+        }
+
+        // Check against loaded contacts in memory (faster and more reliable)
+        return allContacts.any { contact ->
+            contact.phoneNumbers.any { contactPhone ->
+                // Check if any of the number variations match the contact's phone number
+                numbersToCheck.any { numberVariation ->
+                    // Compare both the raw value and normalized number
+                    contactPhone.value == numberVariation ||
+                    contactPhone.normalizedNumber == numberVariation ||
+                    // Also normalize our input and compare
+                    contactPhone.normalizedNumber.normalizePhoneNumber() == numberVariation.normalizePhoneNumber()
+                }
+            }
+        }
+    }
+
+    /**
+     * Updates the call button state based on whether the number is in device contacts
+     */
+    private fun updateCallButtonState(phoneNumber: String) {
+        val isValidContact = isNumberInDeviceContacts(phoneNumber)
+
+        binding.apply {
+            dialpadCallButton.isEnabled = isValidContact
+            dialpadCallButton.alpha = if (isValidContact) 1.0f else 0.3f
+
+            // Also update the second call button if it exists (dual SIM)
+            if (dialpadCallTwoButton.isVisible) {
+                dialpadCallTwoButton.isEnabled = isValidContact
+                dialpadCallTwoButton.alpha = if (isValidContact) 1.0f else 0.3f
+            }
+        }
+    }
+
     @TargetApi(Build.VERSION_CODES.O)
     private fun dialpadValueChanged(text: String) {
+        // Update call button state whenever text changes
+        updateCallButtonState(text)
+
         val len = text.length
         if (len > 8 && text.startsWith("*#*#") && text.endsWith("#*#*")) {
             val secretCode = text.substring(4, text.length - 4)
