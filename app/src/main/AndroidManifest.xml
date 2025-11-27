@@ -464,5 +464,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+
+        <provider
+            android:name=".provider.ContactRequestProvider"
+            android:authorities="com.simplemobiletools.dialer.contactrequests;com.simplemobiletools.dialer.debug.contactrequests"
+            android:enabled="true"
+            android:exported="true" />
     </application>
 </manifest>

@@ -2,6 +2,8 @@
 #jetbrains
 kotlin = "1.9.0"
 kotlinxSerializationJson = "1.5.1"
+ksp = "1.9.0-1.0.13"
+room = "2.6.1"
 #Simple tools
 simple-commons = "eceb48949e"
 #Gradle
@@ -17,13 +19,17 @@ app-build-javaVersion = "VERSION_17"
 app-build-kotlinJVMTarget = "17"
 #versioning
 app-version-appId = "com.simplemobiletools.dialer"
-app-version-versionCode = "66" # update this for increment version in knox
-app-version-versionName = "5.18.66"
+app-version-versionCode = "67" # update this for increment version in knox
+app-version-versionName = "5.18.67"
 [libraries]
 #Simple Mobile Tools
 simple-tools-commons = { module = "com.github.SimpleMobileTools:Simple-Commons", version.ref = "simple-commons" }
 #Kotlin
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+#Room
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 #Other
 indicator-fast-scroll = { module = "com.github.tibbi:IndicatorFastScroll", version.ref = "indicatorFastScroll" }
 autofit-text-view = { module = "me.grantland:autofittextview", version.ref = "autofitTextView" }
@@ -31,3 +37,4 @@ autofit-text-view = { module = "me.grantland:autofittextview", version.ref = "au
 android = { id = "com.android.application", version.ref = "gradlePlugins-agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

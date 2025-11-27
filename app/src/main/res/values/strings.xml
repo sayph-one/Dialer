@@ -86,6 +86,36 @@
     <string name="export_call_history">Export call history</string>
     <string name="import_call_history">Import call history</string>
 
+    <!-- Contact Requests -->
+    <string name="contact_requests">Contact Requests</string>
+    <string name="no_contact_requests">No contact requests yet</string>
+    <string name="tap_plus_to_request">Tap + to request a new contact</string>
+    <string name="add_contact_request">Add contact request</string>
+    <string name="request_contact">Request Contact</string>
+    <string name="first_name">First Name</string>
+    <string name="last_name">Last Name</string>
+    <string name="contact_name">Contact Name</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="submit_request">Submit Request</string>
+    <string name="cancel">Cancel</string>
+    <string name="contact_request_submitted">Contact request submitted</string>
+    <string name="please_enter_first_name">Please enter a first name</string>
+    <string name="please_enter_name">Please enter a contact name</string>
+    <string name="please_enter_valid_phone">Please enter a valid phone number</string>
+    <string name="expand_collapse">Expand/Collapse</string>
+    <string name="pending_requests">Pending (%d)</string>
+    <string name="approved_requests">Approved (%d)</string>
+    <string name="rejected_requests">Rejected (%d)</string>
+    <string name="requested_time_ago">Requested %s</string>
+    <string name="request_status_pending">PENDING</string>
+    <string name="request_status_approved">APPROVED</string>
+    <string name="request_status_rejected">REJECTED</string>
+    <string name="contact_request_approved_title">Contact Request Approved</string>
+    <string name="contact_request_approved_text">Your request for %s has been approved</string>
+    <string name="contact_request_rejected_title">Contact Request Rejected</string>
+    <string name="contact_request_rejected_text">Your request for %s has been rejected</string>
+    <string name="delete_rejected_requests">Delete all rejected</string>
+
     <!-- FAQ -->
     <string name="faq_1_title">I hear incoming calls, but the screen doesn\'t turn on. What can I do?</string>
     <string name="faq_1_text">Such issues can have many device and system specific reasons, hard to say in general. You should look around in your device settings and make sure that the app is allowed to pop up when in background and allow displaying over other apps.</string>

@@ -35,6 +35,7 @@ import com.simplemobiletools.dialer.dialogs.FilterContactSourcesDialog
 import com.simplemobiletools.dialer.extensions.config
 import com.simplemobiletools.dialer.extensions.launchCreateNewContactIntent
 import com.simplemobiletools.dialer.extensions.launchSetDefaultDialerIntent
+import com.simplemobiletools.dialer.fragments.ContactRequestsFragment
 import com.simplemobiletools.dialer.fragments.ContactsFragment
 import com.simplemobiletools.dialer.fragments.FavoritesFragment
 import com.simplemobiletools.dialer.fragments.MyViewPagerFragment
@@ -372,6 +373,10 @@ class MainActivity : SimpleActivity() {
             icons.add(R.drawable.ic_clock_filled_vector)
         }
 
+        if (showTabs and TAB_CONTACT_REQUESTS != 0) {
+            icons.add(R.drawable.ic_person_add_vector)
+        }
+
         return icons
     }
 
@@ -391,6 +396,10 @@ class MainActivity : SimpleActivity() {
             icons.add(R.drawable.ic_clock_vector)
         }
 
+        if (showTabs and TAB_CONTACT_REQUESTS != 0) {
+            icons.add(R.drawable.ic_person_add_outline_vector)
+        }
+
         return icons
     }
 
@@ -407,6 +416,8 @@ class MainActivity : SimpleActivity() {
                     it?.finishActMode()
                 }
                 refreshMenuItems()
+                // Refresh the current fragment when switching tabs
+                getCurrentFragment()?.refreshItems(null)
             }
         })
 
@@ -477,7 +488,8 @@ class MainActivity : SimpleActivity() {
         val drawableId = when (position) {
             0 -> R.drawable.ic_person_vector
             1 -> R.drawable.ic_star_vector
-            else -> R.drawable.ic_clock_vector
+            2 -> R.drawable.ic_clock_vector
+            else -> R.drawable.ic_person_add_vector
         }
 
         return resources.getColoredDrawableWithColor(drawableId, getProperTextColor())
@@ -487,7 +499,8 @@ class MainActivity : SimpleActivity() {
         val stringId = when (position) {
             0 -> R.string.contacts_tab
             1 -> R.string.favorites_tab
-            else -> R.string.call_history_tab
+            2 -> R.string.call_history_tab
+            else -> R.string.contact_requests
         }
 
         return resources.getString(stringId)
@@ -518,9 +531,10 @@ class MainActivity : SimpleActivity() {
     }
 
     fun refreshFragments() {
-        getContactsFragment()?.refreshItems()
-        getFavoritesFragment()?.refreshItems()
-        getRecentsFragment()?.refreshItems()
+        getContactsFragment()?.refreshItems(null)
+        getFavoritesFragment()?.refreshItems(null)
+        getRecentsFragment()?.refreshItems(null)
+        getContactRequestsFragment()?.refreshItems(null)
     }
 
     private fun getAllFragments(): ArrayList<MyViewPagerFragment<*>?> {
@@ -539,6 +553,10 @@ class MainActivity : SimpleActivity() {
             fragments.add(getRecentsFragment())
         }
 
+        if (showTabs and TAB_CONTACT_REQUESTS > 0) {
+            fragments.add(getContactRequestsFragment())
+        }
+
         return fragments
     }
 
@@ -549,6 +567,8 @@ class MainActivity : SimpleActivity() {
     private fun getFavoritesFragment(): FavoritesFragment? = findViewById(R.id.favorites_fragment)
 
     private fun getRecentsFragment(): RecentsFragment? = findViewById(R.id.recents_fragment)
+
+    private fun getContactRequestsFragment(): ContactRequestsFragment? = findViewById(R.id.contact_requests_fragment)
 
     private fun getDefaultTab(): Int {
         val showTabsMask = config.showTabs

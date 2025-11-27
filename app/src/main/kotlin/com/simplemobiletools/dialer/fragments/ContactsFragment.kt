@@ -68,20 +68,26 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     override fun refreshItems(callback: (() -> Unit)?) {
-        val privateCursor = context?.getMyContactsCursor(false, true)
         ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
             // Filter out SIM contacts
             allContacts = ContactFiltering.filterDeviceContacts(context, contacts)
 
-            if (SMT_PRIVATE !in context.baseConfig.ignoredContactSources) {
-                val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
-                if (privateContacts.isNotEmpty()) {
-                    // Also filter private contacts
-                    val filteredPrivateContacts = ContactFiltering.filterDeviceContacts(context, privateContacts)
-                    allContacts.addAll(filteredPrivateContacts)
-                    allContacts.sort()
+            // Try to load private contacts from Simple Commons provider (may not exist)
+            try {
+                if (SMT_PRIVATE !in context.baseConfig.ignoredContactSources) {
+                    val privateCursor = context?.getMyContactsCursor(false, true)
+                    val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
+                    if (privateContacts.isNotEmpty()) {
+                        // Also filter private contacts
+                        val filteredPrivateContacts = ContactFiltering.filterDeviceContacts(context, privateContacts)
+                        allContacts.addAll(filteredPrivateContacts)
+                        allContacts.sort()
+                    }
                 }
+            } catch (e: Exception) {
+                // Private contacts provider not available - this is expected
             }
+
             (activity as MainActivity).cacheContacts(allContacts)
 
             activity?.runOnUiThread {
