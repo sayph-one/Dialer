@@ -17,6 +17,7 @@ import com.simplemobiletools.dialer.database.ContactRequestDatabase
 import com.simplemobiletools.dialer.database.ContactRequestEntity
 import com.simplemobiletools.dialer.databinding.FragmentContactRequestsBinding
 import com.simplemobiletools.dialer.models.ContactRequestListItem
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -29,6 +30,9 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
     private val database by lazy { ContactRequestDatabase.getDatabase(context) }
 
     private var currentSegment = Segment.PENDING
+    private var searchQuery = ""
+    private var isSearchActive = false
+    private var collectionJob: Job? = null
 
     private enum class Segment {
         PENDING, APPROVED, REJECTED
@@ -92,11 +96,23 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
     }
 
     override fun onSearchClosed() {
-        // No search functionality for now
+        isSearchActive = false
+        searchQuery = ""
+        binding.segmentToggleGroup.beVisible()
+        observeRequests()
     }
 
     override fun onSearchQueryChanged(text: String) {
-        // No search functionality for now
+        searchQuery = text
+        if (text.isNotEmpty()) {
+            isSearchActive = true
+            binding.segmentToggleGroup.beGone()
+            searchAllRequests(text)
+        } else {
+            isSearchActive = false
+            binding.segmentToggleGroup.beVisible()
+            observeRequests()
+        }
     }
 
     private fun setupAdapter() {
@@ -130,7 +146,8 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun observeRequests() {
-        (activity as? SimpleActivity)?.lifecycleScope?.launch {
+        collectionJob?.cancel()
+        collectionJob = (activity as? SimpleActivity)?.lifecycleScope?.launch {
             val flow: Flow<List<ContactRequestEntity>> = when (currentSegment) {
                 Segment.PENDING -> database.contactRequestDao().getPendingRequests()
                 Segment.APPROVED -> database.contactRequestDao().getApprovedRequests()
@@ -138,6 +155,9 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
             }
 
             flow.collect { requests ->
+                // Don't update if search is active
+                if (isSearchActive) return@collect
+
                 val listItems = requests.map { ContactRequestListItem.Request(it) }
                 adapter.submitList(listItems)
 
@@ -158,6 +178,43 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
                     } else {
                         ""
                     }
+                } else {
+                    binding.fragmentPlaceholder.beGone()
+                    binding.fragmentPlaceholder2.beGone()
+                    binding.fragmentList.beVisible()
+                }
+            }
+        }
+    }
+
+    private fun searchAllRequests(query: String) {
+        collectionJob?.cancel()
+        collectionJob = (activity as? SimpleActivity)?.lifecycleScope?.launch {
+            // Combine all request types into one flow
+            combine(
+                database.contactRequestDao().getPendingRequests(),
+                database.contactRequestDao().getApprovedRequests(),
+                database.contactRequestDao().getRejectedRequests()
+            ) { pending, approved, rejected ->
+                // Combine all requests
+                pending + approved + rejected
+            }.collect { allRequests ->
+                // Filter by search query
+                val filteredRequests = allRequests.filter { request ->
+                    val fullName = "${request.firstName} ${request.lastName}".trim()
+                    fullName.contains(query, ignoreCase = true) ||
+                    request.phone.contains(query, ignoreCase = true)
+                }
+
+                val listItems = filteredRequests.map { ContactRequestListItem.Request(it) }
+                adapter.submitList(listItems)
+
+                // Show/hide placeholder
+                if (listItems.isEmpty()) {
+                    binding.fragmentPlaceholder.beVisible()
+                    binding.fragmentPlaceholder2.beGone()
+                    binding.fragmentList.beGone()
+                    binding.fragmentPlaceholder.text = context.getString(R.string.no_contact_requests_found)
                 } else {
                     binding.fragmentPlaceholder.beGone()
                     binding.fragmentPlaceholder2.beGone()

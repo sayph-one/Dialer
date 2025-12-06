@@ -221,9 +221,11 @@ class MainActivity : SimpleActivity() {
 
     private fun refreshMenuItems() {
         val currentFragment = getCurrentFragment()
+        val isContactRequestsFragment = currentFragment == getContactRequestsFragment()
+
         binding.mainMenu.getToolbar().menu.apply {
 //            findItem(R.id.clear_call_history).isVisible = currentFragment == getRecentsFragment()
-            findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment()
+            findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment() && !isContactRequestsFragment
 //            findItem(R.id.create_new_contact).isVisible = currentFragment == getContactsFragment()
             findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment()
             findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment() && config.viewType == VIEW_TYPE_GRID
@@ -568,6 +570,17 @@ class MainActivity : SimpleActivity() {
     private fun getRecentsFragment(): RecentsFragment? = findViewById(R.id.recents_fragment)
 
     private fun getContactRequestsFragment(): ContactRequestsFragment? = findViewById(R.id.contact_requests_fragment)
+
+    private fun getContactRequestsTabPosition(): Int {
+        val showTabsMask = config.showTabs
+        if (showTabsMask and TAB_CONTACT_REQUESTS == 0) return -1
+
+        var position = 0
+        if (showTabsMask and TAB_CONTACTS > 0) position++
+        if (showTabsMask and TAB_FAVORITES > 0) position++
+        if (showTabsMask and TAB_CALL_HISTORY > 0) position++
+        return position
+    }
 
     private fun getDefaultTab(): Int {
         // Always open on Call History tab

@@ -1,15 +1,15 @@
 package com.simplemobiletools.dialer.adapters
 
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.text.format.DateUtils
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.simplemobiletools.commons.extensions.getProperPrimaryColor
 import com.simplemobiletools.commons.extensions.getProperTextColor
-import com.simplemobiletools.dialer.R
 import com.simplemobiletools.dialer.activities.SimpleActivity
 import com.simplemobiletools.dialer.databinding.ItemContactRequestBinding
 import com.simplemobiletools.dialer.models.ContactRequestListItem
@@ -50,16 +50,26 @@ class ContactRequestsAdapter(
                 contactName.text = fullName
                 contactPhone.text = entity.phone
 
-                // Format time ago
+                // Set contact initial (first letter of name)
+                contactInitial.text = entity.firstName.firstOrNull()?.uppercase() ?: "?"
+
+                // Set avatar background color based on status
+                val avatarColor = when (entity.status) {
+                    "pending" -> activity.getProperPrimaryColor() // Blue (app's primary color)
+                    "approved" -> Color.parseColor("#A3D78A")      // Green
+                    "rejected" -> Color.parseColor("#FE5757")      // Red
+                    else -> activity.getProperPrimaryColor()
+                }
+                avatarContainer.backgroundTintList = ColorStateList.valueOf(avatarColor)
+
+                // Format time ago (short format)
                 val timeAgo = DateUtils.getRelativeTimeSpanString(
                     entity.requestedAt,
                     System.currentTimeMillis(),
-                    DateUtils.MINUTE_IN_MILLIS
+                    DateUtils.MINUTE_IN_MILLIS,
+                    DateUtils.FORMAT_ABBREV_RELATIVE
                 )
-                requestTime.text = activity.getString(R.string.requested_time_ago, timeAgo)
-
-                // Hide status badge since segments already indicate status
-                statusBadge.visibility = View.GONE
+                requestTime.text = timeAgo
 
                 // Apply text colors
                 contactName.setTextColor(activity.getProperTextColor())
