@@ -4,6 +4,7 @@ kotlin = "1.9.0"
 kotlinxSerializationJson = "1.5.1"
 ksp = "1.9.0-1.0.13"
 room = "2.6.1"
+material = "1.11.0"
 #Simple tools
 simple-commons = "eceb48949e"
 #Gradle
@@ -33,6 +34,8 @@ room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 #Other
 indicator-fast-scroll = { module = "com.github.tibbi:IndicatorFastScroll", version.ref = "indicatorFastScroll" }
 autofit-text-view = { module = "me.grantland:autofittextview", version.ref = "autofitTextView" }
+#Material
+material = { module = "com.google.android.material:material", version.ref = "material" }
 [plugins]
 android = { id = "com.android.application", version.ref = "gradlePlugins-agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

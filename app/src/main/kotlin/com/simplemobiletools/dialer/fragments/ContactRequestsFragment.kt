@@ -1,8 +1,10 @@
 package com.simplemobiletools.dialer.fragments
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.util.AttributeSet
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.simplemobiletools.commons.extensions.beGone
 import com.simplemobiletools.commons.extensions.beVisible
 import com.simplemobiletools.commons.extensions.getProperPrimaryColor
@@ -12,8 +14,10 @@ import com.simplemobiletools.dialer.R
 import com.simplemobiletools.dialer.activities.SimpleActivity
 import com.simplemobiletools.dialer.adapters.ContactRequestsAdapter
 import com.simplemobiletools.dialer.database.ContactRequestDatabase
+import com.simplemobiletools.dialer.database.ContactRequestEntity
 import com.simplemobiletools.dialer.databinding.FragmentContactRequestsBinding
 import com.simplemobiletools.dialer.models.ContactRequestListItem
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -24,7 +28,11 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
     private lateinit var adapter: ContactRequestsAdapter
     private val database by lazy { ContactRequestDatabase.getDatabase(context) }
 
-    private val expandedSections = mutableSetOf("pending", "approved", "rejected")
+    private var currentSegment = Segment.PENDING
+
+    private enum class Segment {
+        PENDING, APPROVED, REJECTED
+    }
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -34,6 +42,7 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
 
     override fun setupFragment() {
         setupAdapter()
+        setupSegmentedButtons()
         setupFAB()
         observeRequests()
     }
@@ -42,7 +51,37 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
         binding.apply {
             fragmentPlaceholder.setTextColor(textColor)
             fragmentPlaceholder2.setTextColor(textColor)
-            fabAddRequest.backgroundTintList = android.content.res.ColorStateList.valueOf(properPrimaryColor)
+            fabAddRequest.backgroundTintList = ColorStateList.valueOf(properPrimaryColor)
+
+            // Style the segmented buttons
+            val buttonStrokeColor = ColorStateList.valueOf(properPrimaryColor)
+            btnPending.strokeColor = buttonStrokeColor
+            btnApproved.strokeColor = buttonStrokeColor
+            btnRejected.strokeColor = buttonStrokeColor
+
+            // Set ripple and checked colors
+            val checkedColor = ColorStateList(
+                arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf()
+                ),
+                intArrayOf(properPrimaryColor, android.graphics.Color.TRANSPARENT)
+            )
+            btnPending.backgroundTintList = checkedColor
+            btnApproved.backgroundTintList = checkedColor
+            btnRejected.backgroundTintList = checkedColor
+
+            // Text colors
+            val textColors = ColorStateList(
+                arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf()
+                ),
+                intArrayOf(android.graphics.Color.WHITE, textColor)
+            )
+            btnPending.setTextColor(textColors)
+            btnApproved.setTextColor(textColors)
+            btnRejected.setTextColor(textColors)
         }
         adapter.notifyDataSetChanged()
     }
@@ -63,14 +102,25 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
     private fun setupAdapter() {
         adapter = ContactRequestsAdapter(
             activity = activity as SimpleActivity,
-            onHeaderClick = { header ->
-                toggleSection(header)
-            },
             onRequestClick = { request ->
                 // Handle request click (future: show details dialog)
             }
         )
         binding.fragmentList.adapter = adapter
+    }
+
+    private fun setupSegmentedButtons() {
+        binding.segmentToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                currentSegment = when (checkedId) {
+                    R.id.btn_pending -> Segment.PENDING
+                    R.id.btn_approved -> Segment.APPROVED
+                    R.id.btn_rejected -> Segment.REJECTED
+                    else -> Segment.PENDING
+                }
+                observeRequests()
+            }
+        }
     }
 
     private fun setupFAB() {
@@ -81,64 +131,33 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
 
     private fun observeRequests() {
         (activity as? SimpleActivity)?.lifecycleScope?.launch {
-            combine(
-                database.contactRequestDao().getPendingRequests(),
-                database.contactRequestDao().getApprovedRequests(),
-                database.contactRequestDao().getRejectedRequests()
-            ) { pending, approved, rejected ->
-                Triple(pending, approved, rejected)
-            }.collect { (pending, approved, rejected) ->
-                val listItems = mutableListOf<ContactRequestListItem>()
+            val flow: Flow<List<ContactRequestEntity>> = when (currentSegment) {
+                Segment.PENDING -> database.contactRequestDao().getPendingRequests()
+                Segment.APPROVED -> database.contactRequestDao().getApprovedRequests()
+                Segment.REJECTED -> database.contactRequestDao().getRejectedRequests()
+            }
 
-                // Add pending section
-                if (pending.isNotEmpty()) {
-                    listItems.add(
-                        ContactRequestListItem.Header(
-                            title = String.format(context.getString(R.string.pending_requests), pending.size),
-                            count = pending.size,
-                            isExpanded = expandedSections.contains("pending")
-                        )
-                    )
-                    if (expandedSections.contains("pending")) {
-                        listItems.addAll(pending.map { ContactRequestListItem.Request(it) })
-                    }
-                }
-
-                // Add approved section
-                if (approved.isNotEmpty()) {
-                    listItems.add(
-                        ContactRequestListItem.Header(
-                            title = String.format(context.getString(R.string.approved_requests), approved.size),
-                            count = approved.size,
-                            isExpanded = expandedSections.contains("approved")
-                        )
-                    )
-                    if (expandedSections.contains("approved")) {
-                        listItems.addAll(approved.map { ContactRequestListItem.Request(it) })
-                    }
-                }
-
-                // Add rejected section
-                if (rejected.isNotEmpty()) {
-                    listItems.add(
-                        ContactRequestListItem.Header(
-                            title = String.format(context.getString(R.string.rejected_requests), rejected.size),
-                            count = rejected.size,
-                            isExpanded = expandedSections.contains("rejected")
-                        )
-                    )
-                    if (expandedSections.contains("rejected")) {
-                        listItems.addAll(rejected.map { ContactRequestListItem.Request(it) })
-                    }
-                }
-
+            flow.collect { requests ->
+                val listItems = requests.map { ContactRequestListItem.Request(it) }
                 adapter.submitList(listItems)
 
-                // Show/hide placeholder
+                // Show/hide placeholder based on current segment
                 if (listItems.isEmpty()) {
                     binding.fragmentPlaceholder.beVisible()
                     binding.fragmentPlaceholder2.beVisible()
                     binding.fragmentList.beGone()
+
+                    // Update placeholder text based on segment
+                    binding.fragmentPlaceholder.text = when (currentSegment) {
+                        Segment.PENDING -> context.getString(R.string.no_pending_requests)
+                        Segment.APPROVED -> context.getString(R.string.no_approved_requests)
+                        Segment.REJECTED -> context.getString(R.string.no_rejected_requests)
+                    }
+                    binding.fragmentPlaceholder2.text = if (currentSegment == Segment.PENDING) {
+                        context.getString(R.string.tap_plus_to_request)
+                    } else {
+                        ""
+                    }
                 } else {
                     binding.fragmentPlaceholder.beGone()
                     binding.fragmentPlaceholder2.beGone()
@@ -148,28 +167,10 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
         }
     }
 
-    private fun toggleSection(header: ContactRequestListItem.Header) {
-        val sectionKey = when {
-            header.title.contains("Pending") -> "pending"
-            header.title.contains("Approved") -> "approved"
-            header.title.contains("Rejected") -> "rejected"
-            else -> return
-        }
-
-        if (expandedSections.contains(sectionKey)) {
-            expandedSections.remove(sectionKey)
-        } else {
-            expandedSections.add(sectionKey)
-        }
-
-        // Trigger refresh by observing again
-        observeRequests()
-    }
-
     private fun showAddRequestDialog() {
         AddContactRequestDialog(activity as SimpleActivity) { firstName, lastName, phone ->
             (activity as? SimpleActivity)?.lifecycleScope?.launch {
-                val request = com.simplemobiletools.dialer.database.ContactRequestEntity(
+                val request = ContactRequestEntity(
                     requestId = java.util.UUID.randomUUID().toString(),
                     firstName = firstName,
                     lastName = lastName,

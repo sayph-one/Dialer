@@ -106,6 +106,12 @@
     <string name="pending_requests">Pending (%d)</string>
     <string name="approved_requests">Approved (%d)</string>
     <string name="rejected_requests">Rejected (%d)</string>
+    <string name="segment_pending">Pending</string>
+    <string name="segment_approved">Approved</string>
+    <string name="segment_rejected">Rejected</string>
+    <string name="no_pending_requests">No pending requests</string>
+    <string name="no_approved_requests">No approved requests</string>
+    <string name="no_rejected_requests">No rejected requests</string>
     <string name="requested_time_ago">Requested %s</string>
     <string name="request_status_pending">PENDING</string>
     <string name="request_status_approved">APPROVED</string>
