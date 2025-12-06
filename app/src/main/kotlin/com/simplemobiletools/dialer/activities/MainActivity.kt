@@ -424,12 +424,11 @@ class MainActivity : SimpleActivity() {
         // selecting the proper tab sometimes glitches, add an extra selector to make sure we have it right
         binding.mainTabsHolder.onGlobalLayout {
             Handler().postDelayed({
-                var wantedTab = getDefaultTab()
+                // Always open Call History tab
+                val wantedTab = getDefaultTab()
 
-                // open the Recents tab if we got here by clicking a missed call notification
+                // Clear missed calls if we got here by clicking a missed call notification
                 if (intent.action == Intent.ACTION_VIEW && config.showTabs and TAB_CALL_HISTORY > 0) {
-                    wantedTab = binding.mainTabsHolder.tabCount - 1
-
                     ensureBackgroundThread {
                         clearMissedCalls()
                     }
@@ -571,31 +570,19 @@ class MainActivity : SimpleActivity() {
     private fun getContactRequestsFragment(): ContactRequestsFragment? = findViewById(R.id.contact_requests_fragment)
 
     private fun getDefaultTab(): Int {
+        // Always open on Call History tab
         val showTabsMask = config.showTabs
-        return when (config.defaultTab) {
-            TAB_LAST_USED -> if (config.lastUsedViewPagerPage < binding.mainTabsHolder.tabCount) config.lastUsedViewPagerPage else 0
-            TAB_CONTACTS -> 0
-            TAB_FAVORITES -> if (showTabsMask and TAB_CONTACTS > 0) 1 else 0
-            else -> {
-                if (showTabsMask and TAB_CALL_HISTORY > 0) {
-                    if (showTabsMask and TAB_CONTACTS > 0) {
-                        if (showTabsMask and TAB_FAVORITES > 0) {
-                            2
-                        } else {
-                            1
-                        }
-                    } else {
-                        if (showTabsMask and TAB_FAVORITES > 0) {
-                            1
-                        } else {
-                            0
-                        }
-                    }
-                } else {
-                    0
-                }
-            }
+        var callHistoryIndex = 0
+
+        // Calculate the position of Call History based on which tabs are shown before it
+        if (showTabsMask and TAB_CONTACTS > 0) {
+            callHistoryIndex++
         }
+        if (showTabsMask and TAB_FAVORITES > 0) {
+            callHistoryIndex++
+        }
+
+        return callHistoryIndex
     }
 
     @SuppressLint("MissingPermission")

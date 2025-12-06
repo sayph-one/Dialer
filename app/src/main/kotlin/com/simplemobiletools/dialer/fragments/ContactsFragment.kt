@@ -1,6 +1,11 @@
 package com.simplemobiletools.dialer.fragments
 
 import android.content.Context
+import android.database.ContentObserver
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.ContactsContract
 import android.util.AttributeSet
 import com.reddit.indicatorfastscroll.FastScrollItemIndicator
 import com.simplemobiletools.commons.adapters.MyRecyclerViewAdapter
@@ -23,6 +28,9 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     RefreshItemsListener {
     private lateinit var binding: FragmentLettersLayoutBinding
     private var allContacts = ArrayList<Contact>()
+    private var contactsLoaded = false
+    private var contactsChanged = true
+    private var contactsObserver: ContentObserver? = null
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -50,7 +58,49 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
             }
         }
 
+        setupContactsObserver()
+    }
 
+    private fun setupContactsObserver() {
+        if (contactsObserver == null) {
+            contactsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    super.onChange(selfChange, uri)
+                    contactsChanged = true
+                }
+            }
+
+            try {
+                context.contentResolver.registerContentObserver(
+                    ContactsContract.Contacts.CONTENT_URI,
+                    true,
+                    contactsObserver!!
+                )
+            } catch (e: Exception) {
+                // Ignore if registration fails
+            }
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        setupContactsObserver()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        unregisterContactsObserver()
+    }
+
+    private fun unregisterContactsObserver() {
+        contactsObserver?.let {
+            try {
+                context.contentResolver.unregisterContentObserver(it)
+            } catch (e: Exception) {
+                // Ignore if unregistration fails
+            }
+            contactsObserver = null
+        }
     }
 
     override fun setupColors(textColor: Int, primaryColor: Int, properPrimaryColor: Int) {
@@ -68,6 +118,14 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     override fun refreshItems(callback: (() -> Unit)?) {
+        // If contacts are already loaded and haven't changed, just display cached data
+        if (contactsLoaded && !contactsChanged) {
+            gotContacts(allContacts)
+            callback?.invoke()
+            return
+        }
+
+        // Load contacts from system
         ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
             // Filter out SIM contacts
             allContacts = ContactFiltering.filterDeviceContacts(context, contacts)
@@ -89,6 +147,10 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
             }
 
             (activity as MainActivity).cacheContacts(allContacts)
+
+            // Mark as loaded and reset changed flag
+            contactsLoaded = true
+            contactsChanged = false
 
             activity?.runOnUiThread {
                 gotContacts(allContacts)
@@ -183,12 +245,9 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
         activity?.handlePermission(PERMISSION_READ_CONTACTS) {
             if (it) {
                 binding.fragmentPlaceholder.text = context.getString(R.string.no_contacts_found)
-//                binding.fragmentPlaceholder2.text = context.getString(R.string.create_new_contact)
-                ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
-                    activity?.runOnUiThread {
-                        gotContacts(contacts)
-                    }
-                }
+                // Force reload contacts after permission is granted
+                contactsChanged = true
+                refreshItems(null)
             }
         }
     }
