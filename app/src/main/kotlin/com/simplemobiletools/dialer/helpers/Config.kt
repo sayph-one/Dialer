@@ -51,7 +51,25 @@ class Config(context: Context) : BaseConfig(context) {
     }
 
     var showTabs: Int
-        get() = prefs.getInt(SHOW_TABS, ALL_TABS_MASK)
+        get() {
+            // One-time migration: add TAB_CONTACT_REQUESTS for users upgrading from older versions
+            val migrated = prefs.getBoolean(CONTACT_REQUESTS_TAB_MIGRATED, false)
+            if (!migrated) {
+                val currentValue = prefs.getInt(SHOW_TABS, ALL_TABS_MASK)
+                // If TAB_CONTACT_REQUESTS bit is not set, add it
+                if ((currentValue and TAB_CONTACT_REQUESTS) == 0) {
+                    val newValue = currentValue or TAB_CONTACT_REQUESTS
+                    prefs.edit()
+                        .putInt(SHOW_TABS, newValue)
+                        .putBoolean(CONTACT_REQUESTS_TAB_MIGRATED, true)
+                        .apply()
+                    return newValue
+                }
+                // Mark as migrated even if already has the tab
+                prefs.edit().putBoolean(CONTACT_REQUESTS_TAB_MIGRATED, true).apply()
+            }
+            return prefs.getInt(SHOW_TABS, ALL_TABS_MASK)
+        }
         set(showTabs) = prefs.edit().putInt(SHOW_TABS, showTabs).apply()
 
     var groupSubsequentCalls: Boolean
