@@ -67,6 +67,8 @@ abstract class MyViewPagerFragment<BINDING : MyViewPagerFragment.InnerBinding>(c
 
     abstract fun setupColors(textColor: Int, primaryColor: Int, properPrimaryColor: Int)
 
+    abstract fun refreshItems(callback: (() -> Unit)?)
+
     abstract fun onSearchClosed()
 
     abstract fun onSearchQueryChanged(text: String)

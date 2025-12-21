@@ -35,6 +35,7 @@ import com.simplemobiletools.dialer.dialogs.FilterContactSourcesDialog
 import com.simplemobiletools.dialer.extensions.config
 import com.simplemobiletools.dialer.extensions.launchCreateNewContactIntent
 import com.simplemobiletools.dialer.extensions.launchSetDefaultDialerIntent
+import com.simplemobiletools.dialer.fragments.ContactRequestsFragment
 import com.simplemobiletools.dialer.fragments.ContactsFragment
 import com.simplemobiletools.dialer.fragments.FavoritesFragment
 import com.simplemobiletools.dialer.fragments.MyViewPagerFragment
@@ -220,9 +221,11 @@ class MainActivity : SimpleActivity() {
 
     private fun refreshMenuItems() {
         val currentFragment = getCurrentFragment()
+        val isContactRequestsFragment = currentFragment == getContactRequestsFragment()
+
         binding.mainMenu.getToolbar().menu.apply {
 //            findItem(R.id.clear_call_history).isVisible = currentFragment == getRecentsFragment()
-            findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment()
+            findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment() && !isContactRequestsFragment
 //            findItem(R.id.create_new_contact).isVisible = currentFragment == getContactsFragment()
             findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment()
             findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment() && config.viewType == VIEW_TYPE_GRID
@@ -372,6 +375,10 @@ class MainActivity : SimpleActivity() {
             icons.add(R.drawable.ic_clock_filled_vector)
         }
 
+        if (showTabs and TAB_CONTACT_REQUESTS != 0) {
+            icons.add(R.drawable.ic_person_add_vector)
+        }
+
         return icons
     }
 
@@ -391,6 +398,10 @@ class MainActivity : SimpleActivity() {
             icons.add(R.drawable.ic_clock_vector)
         }
 
+        if (showTabs and TAB_CONTACT_REQUESTS != 0) {
+            icons.add(R.drawable.ic_person_add_outline_vector)
+        }
+
         return icons
     }
 
@@ -407,18 +418,19 @@ class MainActivity : SimpleActivity() {
                     it?.finishActMode()
                 }
                 refreshMenuItems()
+                // Refresh the current fragment when switching tabs
+                getCurrentFragment()?.refreshItems(null)
             }
         })
 
         // selecting the proper tab sometimes glitches, add an extra selector to make sure we have it right
         binding.mainTabsHolder.onGlobalLayout {
             Handler().postDelayed({
-                var wantedTab = getDefaultTab()
+                // Always open Call History tab
+                val wantedTab = getDefaultTab()
 
-                // open the Recents tab if we got here by clicking a missed call notification
+                // Clear missed calls if we got here by clicking a missed call notification
                 if (intent.action == Intent.ACTION_VIEW && config.showTabs and TAB_CALL_HISTORY > 0) {
-                    wantedTab = binding.mainTabsHolder.tabCount - 1
-
                     ensureBackgroundThread {
                         clearMissedCalls()
                     }
@@ -477,7 +489,8 @@ class MainActivity : SimpleActivity() {
         val drawableId = when (position) {
             0 -> R.drawable.ic_person_vector
             1 -> R.drawable.ic_star_vector
-            else -> R.drawable.ic_clock_vector
+            2 -> R.drawable.ic_clock_vector
+            else -> R.drawable.ic_person_add_vector
         }
 
         return resources.getColoredDrawableWithColor(drawableId, getProperTextColor())
@@ -487,7 +500,8 @@ class MainActivity : SimpleActivity() {
         val stringId = when (position) {
             0 -> R.string.contacts_tab
             1 -> R.string.favorites_tab
-            else -> R.string.call_history_tab
+            2 -> R.string.call_history_tab
+            else -> R.string.contact_requests
         }
 
         return resources.getString(stringId)
@@ -518,9 +532,10 @@ class MainActivity : SimpleActivity() {
     }
 
     fun refreshFragments() {
-        getContactsFragment()?.refreshItems()
-        getFavoritesFragment()?.refreshItems()
-        getRecentsFragment()?.refreshItems()
+        getContactsFragment()?.refreshItems(null)
+        getFavoritesFragment()?.refreshItems(null)
+        getRecentsFragment()?.refreshItems(null)
+        getContactRequestsFragment()?.refreshItems(null)
     }
 
     private fun getAllFragments(): ArrayList<MyViewPagerFragment<*>?> {
@@ -539,6 +554,10 @@ class MainActivity : SimpleActivity() {
             fragments.add(getRecentsFragment())
         }
 
+        if (showTabs and TAB_CONTACT_REQUESTS > 0) {
+            fragments.add(getContactRequestsFragment())
+        }
+
         return fragments
     }
 
@@ -550,32 +569,33 @@ class MainActivity : SimpleActivity() {
 
     private fun getRecentsFragment(): RecentsFragment? = findViewById(R.id.recents_fragment)
 
-    private fun getDefaultTab(): Int {
+    private fun getContactRequestsFragment(): ContactRequestsFragment? = findViewById(R.id.contact_requests_fragment)
+
+    private fun getContactRequestsTabPosition(): Int {
         val showTabsMask = config.showTabs
-        return when (config.defaultTab) {
-            TAB_LAST_USED -> if (config.lastUsedViewPagerPage < binding.mainTabsHolder.tabCount) config.lastUsedViewPagerPage else 0
-            TAB_CONTACTS -> 0
-            TAB_FAVORITES -> if (showTabsMask and TAB_CONTACTS > 0) 1 else 0
-            else -> {
-                if (showTabsMask and TAB_CALL_HISTORY > 0) {
-                    if (showTabsMask and TAB_CONTACTS > 0) {
-                        if (showTabsMask and TAB_FAVORITES > 0) {
-                            2
-                        } else {
-                            1
-                        }
-                    } else {
-                        if (showTabsMask and TAB_FAVORITES > 0) {
-                            1
-                        } else {
-                            0
-                        }
-                    }
-                } else {
-                    0
-                }
-            }
+        if (showTabsMask and TAB_CONTACT_REQUESTS == 0) return -1
+
+        var position = 0
+        if (showTabsMask and TAB_CONTACTS > 0) position++
+        if (showTabsMask and TAB_FAVORITES > 0) position++
+        if (showTabsMask and TAB_CALL_HISTORY > 0) position++
+        return position
+    }
+
+    private fun getDefaultTab(): Int {
+        // Always open on Call History tab
+        val showTabsMask = config.showTabs
+        var callHistoryIndex = 0
+
+        // Calculate the position of Call History based on which tabs are shown before it
+        if (showTabsMask and TAB_CONTACTS > 0) {
+            callHistoryIndex++
         }
+        if (showTabsMask and TAB_FAVORITES > 0) {
+            callHistoryIndex++
+        }
+
+        return callHistoryIndex
     }
 
     @SuppressLint("MissingPermission")

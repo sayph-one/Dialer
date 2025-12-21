@@ -10,6 +10,7 @@ import com.simplemobiletools.dialer.R
 import com.simplemobiletools.dialer.activities.SimpleActivity
 import com.simplemobiletools.dialer.extensions.config
 import com.simplemobiletools.dialer.fragments.MyViewPagerFragment
+import com.simplemobiletools.dialer.helpers.TAB_CONTACT_REQUESTS
 import com.simplemobiletools.dialer.helpers.tabsList
 
 class ViewPagerAdapter(val activity: SimpleActivity) : PagerAdapter() {
@@ -47,6 +48,10 @@ class ViewPagerAdapter(val activity: SimpleActivity) : PagerAdapter() {
 
         if (showTabs and TAB_CALL_HISTORY > 0) {
             fragments.add(R.layout.fragment_recents)
+        }
+
+        if (showTabs and TAB_CONTACT_REQUESTS > 0) {
+            fragments.add(R.layout.fragment_contact_requests)
         }
 
         return if (position < fragments.size) fragments[position] else fragments.last()
