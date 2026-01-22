@@ -100,27 +100,31 @@ object ContactFiltering {
         val simAccountTypesPlaceholders = SIM_ACCOUNT_TYPES.joinToString(",") { "?" }
         val selectionArgs = SIM_ACCOUNT_TYPES.toTypedArray()
 
-        // SECURITY FIX: Removed "OR ACCOUNT_TYPE IS NULL" clause
-        // NULL account types could be SIM contacts on some devices, so we require explicit non-SIM account types
+        // Accept contacts with:
+        // 1. NULL account type (local device contacts created by apps like SayphAgent)
+        // 2. Non-SIM account types
+        // SIM contacts on Samsung have account_type like "vnd.sec.contact.sim"
         return context.contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
             arrayOf(ContactsContract.RawContacts._ID),
             "${ContactsContract.RawContacts.CONTACT_ID} IN ($contactIdsList) AND " +
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NOT NULL AND " +
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE} NOT IN ($simAccountTypesPlaceholders)",
+                "(${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL OR " +
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE} NOT IN ($simAccountTypesPlaceholders))",
             selectionArgs,
             null
         )?.use { cursor ->
             val count = cursor.count
             if (enableDebugLogging) {
-                Log.d(TAG, "Filtered query (excluding all SIM types and NULL types) returned $count results")
+                Log.d(TAG, "Filtered query (excluding SIM types, allowing NULL/local) returned $count results")
             }
             count > 0
         } ?: false
     }
 
     /**
-     * Filter a list of contacts to only include those saved to device (not SIM)
+     * Filter a list of contacts to only include those saved to device (not SIM).
+     * Uses the contact's own source field to determine if it's a SIM contact,
+     * rather than phone number lookup (which can be fooled by duplicate numbers).
      */
     fun filterDeviceContacts(context: Context, contacts: List<Contact>, enableDebugLogging: Boolean = false): ArrayList<Contact> {
         if (enableDebugLogging) {
@@ -128,15 +132,20 @@ object ContactFiltering {
         }
 
         val filtered = contacts.filter { contact ->
-            val hasDeviceNumber = contact.phoneNumbers.any { phoneNumber ->
-                isContactSavedToDevice(context, phoneNumber.normalizedNumber, enableDebugLogging)
+            // Check if this contact's source indicates it's a SIM contact
+            val isSimContact = isSimSource(contact.source)
+
+            if (enableDebugLogging) {
+                Log.d(TAG, "Contact: ${contact.getNameToDisplay()}, source: '${contact.source}', isSimContact: $isSimContact")
             }
 
-            if (enableDebugLogging && !hasDeviceNumber) {
-                Log.d(TAG, "Filtering out SIM contact: ${contact.getNameToDisplay()}")
+            if (isSimContact) {
+                if (enableDebugLogging) {
+                    Log.d(TAG, "Filtering out SIM contact: ${contact.getNameToDisplay()} (source: ${contact.source})")
+                }
             }
 
-            hasDeviceNumber
+            !isSimContact
         } as ArrayList<Contact>
 
         if (enableDebugLogging) {
@@ -144,6 +153,18 @@ object ContactFiltering {
         }
 
         return filtered
+    }
+
+    /**
+     * Check if a contact source indicates a SIM contact.
+     * The source field contains the account name (e.g., "primary.sim.account_name" for Samsung SIM).
+     */
+    private fun isSimSource(source: String?): Boolean {
+        if (source.isNullOrEmpty()) return false // Empty source is usually device contact
+
+        // Check if source contains "sim" (case insensitive)
+        // This catches: "primary.sim.account_name", "SIM", "sim", etc.
+        return source.contains("sim", ignoreCase = true)
     }
 
     /**
