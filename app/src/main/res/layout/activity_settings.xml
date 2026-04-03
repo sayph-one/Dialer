@@ -56,6 +56,22 @@
                 android:id="@+id/settings_color_customization_divider"
                 layout="@layout/divider" />
 
+            <RelativeLayout
+                android:id="@+id/settings_demo_mode_holder"
+                style="@style/SettingsHolderCheckboxStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+                <com.simplemobiletools.commons.views.MyAppCompatCheckbox
+                    android:id="@+id/settings_demo_mode"
+                    style="@style/SettingsCheckboxStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/demo_mode" />
+
+            </RelativeLayout>
+
             <TextView
                 android:id="@+id/settings_general_settings_label"
                 style="@style/SettingsSectionLabelStyle"

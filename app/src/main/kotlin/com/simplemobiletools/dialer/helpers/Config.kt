@@ -107,4 +107,12 @@ class Config(context: Context) : BaseConfig(context) {
     var alwaysShowFullscreen: Boolean
         get() = prefs.getBoolean(ALWAYS_SHOW_FULLSCREEN, false)
         set(alwaysShowFullscreen) = prefs.edit().putBoolean(ALWAYS_SHOW_FULLSCREEN, alwaysShowFullscreen).apply()
+
+    var demoMode: Boolean
+        get() = prefs.getBoolean(DEMO_MODE, false)
+        set(demoMode) = prefs.edit().putBoolean(DEMO_MODE, demoMode).apply()
+
+    var demoModeUnlocked: Boolean
+        get() = prefs.getBoolean(DEMO_MODE_UNLOCKED, false)
+        set(unlocked) = prefs.edit().putBoolean(DEMO_MODE_UNLOCKED, unlocked).apply()
 }

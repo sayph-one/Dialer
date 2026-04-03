@@ -17,6 +17,7 @@ import com.simplemobiletools.dialer.adapters.RecentCallsAdapter
 import com.simplemobiletools.dialer.databinding.FragmentRecentsBinding
 import com.simplemobiletools.dialer.extensions.config
 import com.simplemobiletools.dialer.helpers.ContactFiltering
+import com.simplemobiletools.dialer.helpers.DemoDataProvider
 import com.simplemobiletools.dialer.helpers.MIN_RECENTS_THRESHOLD
 import com.simplemobiletools.dialer.helpers.RecentsHelper
 import com.simplemobiletools.dialer.interfaces.RefreshItemsListener
@@ -61,6 +62,15 @@ class RecentsFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
 
     override fun refreshItems(callback: (() -> Unit)?) {
+        // Demo mode: show mock call history
+        if (context?.config?.demoMode == true) {
+            allRecentCalls = DemoDataProvider.demoRecentCalls
+            activity?.runOnUiThread {
+                gotRecents(allRecentCalls)
+            }
+            return
+        }
+
         val privateCursor = context?.getMyContactsCursor(false, true)
         val groupSubsequentCalls = context?.config?.groupSubsequentCalls ?: false
         val querySize = allRecentCalls.size.coerceAtLeast(MIN_RECENTS_THRESHOLD)

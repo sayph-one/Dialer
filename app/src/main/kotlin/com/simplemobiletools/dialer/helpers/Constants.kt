@@ -35,3 +35,7 @@ const val DECLINE_CALL = PATH + "decline_call"
 const val DIALPAD_TONE_LENGTH_MS = 150L // The length of DTMF tones in milliseconds
 
 const val MIN_RECENTS_THRESHOLD = 30
+
+// Demo mode
+const val DEMO_MODE = "demo_mode"
+const val DEMO_MODE_UNLOCKED = "demo_mode_unlocked"

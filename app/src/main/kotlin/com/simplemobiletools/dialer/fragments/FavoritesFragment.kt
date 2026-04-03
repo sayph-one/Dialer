@@ -19,6 +19,7 @@ import com.simplemobiletools.dialer.databinding.FragmentLettersLayoutBinding
 import com.simplemobiletools.dialer.extensions.config
 import com.simplemobiletools.dialer.helpers.ContactFiltering
 import com.simplemobiletools.dialer.helpers.Converters
+import com.simplemobiletools.dialer.helpers.DemoDataProvider
 import com.simplemobiletools.dialer.interfaces.RefreshItemsListener
 import java.util.Locale
 
@@ -58,6 +59,16 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
     }
 
     override fun refreshItems(callback: (() -> Unit)?) {
+        // Demo mode: show mock favorites
+        if (context.config.demoMode) {
+            allContacts = ArrayList(DemoDataProvider.demoFavorites)
+            activity?.runOnUiThread {
+                gotContacts(allContacts)
+                callback?.invoke()
+            }
+            return
+        }
+
         ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
             // Filter out SIM contacts first
             var filteredContacts = ContactFiltering.filterDeviceContacts(context, contacts)

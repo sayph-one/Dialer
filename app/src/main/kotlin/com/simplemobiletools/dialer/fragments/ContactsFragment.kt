@@ -18,9 +18,11 @@ import com.simplemobiletools.dialer.activities.SimpleActivity
 import com.simplemobiletools.dialer.adapters.ContactsAdapter
 import com.simplemobiletools.dialer.databinding.FragmentContactsBinding
 import com.simplemobiletools.dialer.databinding.FragmentLettersLayoutBinding
+import com.simplemobiletools.dialer.extensions.config
 import com.simplemobiletools.dialer.extensions.launchCreateNewContactIntent
 import com.simplemobiletools.dialer.extensions.startContactDetailsIntent
 import com.simplemobiletools.dialer.helpers.ContactFiltering
+import com.simplemobiletools.dialer.helpers.DemoDataProvider
 import com.simplemobiletools.dialer.interfaces.RefreshItemsListener
 import java.util.Locale
 
@@ -118,6 +120,17 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     override fun refreshItems(callback: (() -> Unit)?) {
+        // Demo mode: show mock contacts
+        if (context.config.demoMode) {
+            allContacts = ArrayList(DemoDataProvider.demoContacts)
+            contactsLoaded = true
+            activity?.runOnUiThread {
+                gotContacts(allContacts)
+                callback?.invoke()
+            }
+            return
+        }
+
         // If contacts are already loaded and haven't changed, just display cached data
         if (contactsLoaded && !contactsChanged) {
             gotContacts(allContacts)

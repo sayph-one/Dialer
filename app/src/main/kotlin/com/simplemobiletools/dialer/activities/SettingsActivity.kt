@@ -33,6 +33,7 @@ class SettingsActivity : SimpleActivity() {
     }
 
     private val binding by viewBinding(ActivitySettingsBinding::inflate)
+
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             toast(R.string.importing)
@@ -65,7 +66,6 @@ class SettingsActivity : SimpleActivity() {
         setupToolbar(binding.settingsToolbar, NavigationIcon.Arrow)
 
         setupPurchaseThankYou()
-        setupCustomizeColors()
         setupUseEnglish()
         setupLanguage()
         setupManageBlockedNumbers()
@@ -86,11 +86,11 @@ class SettingsActivity : SimpleActivity() {
         setupAlwaysShowFullscreen()
         setupCallsExport()
         setupCallsImport()
+        setupDemoMode()
         updateTextColors(binding.settingsHolder)
 
         binding.apply {
             arrayOf(
-                settingsColorCustomizationSectionLabel,
                 settingsGeneralSettingsLabel,
                 settingsStartupLabel,
                 settingsCallsLabel,
@@ -113,10 +113,26 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupCustomizeColors() {
-        binding.settingsColorCustomizationLabel.text = getCustomizeColorsString()
-        binding.settingsColorCustomizationHolder.setOnClickListener {
-            handleCustomizeColorsClick()
+    private fun setupDemoMode() {
+        // Hide color customization section entirely
+        binding.settingsColorCustomizationSectionLabel.beGone()
+        binding.settingsColorCustomizationHolder.beGone()
+        binding.settingsColorCustomizationDivider.beGone()
+        // Show toggle if already unlocked
+        if (config.demoModeUnlocked) {
+            binding.settingsDemoModeHolder.beVisible()
+            setupDemoModeSwitch()
+        }
+    }
+
+    private fun setupDemoModeSwitch() {
+        binding.apply {
+            settingsDemoMode.isChecked = config.demoMode
+            settingsDemoModeHolder.setOnClickListener {
+                settingsDemoMode.toggle()
+                config.demoMode = settingsDemoMode.isChecked
+                toast(if (settingsDemoMode.isChecked) "Demo mode enabled - restart app" else "Demo mode disabled - restart app")
+            }
         }
     }
 

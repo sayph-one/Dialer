@@ -16,6 +16,8 @@ import com.simplemobiletools.dialer.adapters.ContactRequestsAdapter
 import com.simplemobiletools.dialer.database.ContactRequestDatabase
 import com.simplemobiletools.dialer.database.ContactRequestEntity
 import com.simplemobiletools.dialer.databinding.FragmentContactRequestsBinding
+import com.simplemobiletools.dialer.extensions.config
+import com.simplemobiletools.dialer.helpers.DemoDataProvider
 import com.simplemobiletools.dialer.models.ContactRequestListItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -147,6 +149,21 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
 
     private fun observeRequests() {
         collectionJob?.cancel()
+
+        // Demo mode: show only demo data (no database access)
+        if (context.config.demoMode) {
+            val status = when (currentSegment) {
+                Segment.PENDING -> "pending"
+                Segment.APPROVED -> "approved"
+                Segment.REJECTED -> "rejected"
+            }
+            val allRequests = DemoDataProvider.getAllDemoRequests(status)
+            val listItems = allRequests.map { ContactRequestListItem.Request(it) }
+            adapter.submitList(listItems)
+            updatePlaceholderVisibility(listItems.isEmpty())
+            return
+        }
+
         collectionJob = (activity as? SimpleActivity)?.lifecycleScope?.launch {
             val flow: Flow<List<ContactRequestEntity>> = when (currentSegment) {
                 Segment.PENDING -> database.contactRequestDao().getPendingRequests()
@@ -224,20 +241,52 @@ class ContactRequestsFragment(context: Context, attributeSet: AttributeSet) :
         }
     }
 
+    private fun updatePlaceholderVisibility(isEmpty: Boolean) {
+        if (isEmpty) {
+            binding.fragmentPlaceholder.beVisible()
+            binding.fragmentPlaceholder2.beVisible()
+            binding.fragmentList.beGone()
+
+            binding.fragmentPlaceholder.text = when (currentSegment) {
+                Segment.PENDING -> context.getString(R.string.no_pending_requests)
+                Segment.APPROVED -> context.getString(R.string.no_approved_requests)
+                Segment.REJECTED -> context.getString(R.string.no_rejected_requests)
+            }
+            binding.fragmentPlaceholder2.text = if (currentSegment == Segment.PENDING) {
+                context.getString(R.string.tap_plus_to_request)
+            } else {
+                ""
+            }
+        } else {
+            binding.fragmentPlaceholder.beGone()
+            binding.fragmentPlaceholder2.beGone()
+            binding.fragmentList.beVisible()
+        }
+    }
+
     private fun showAddRequestDialog() {
         AddContactRequestDialog(activity as SimpleActivity) { firstName, lastName, phone ->
-            (activity as? SimpleActivity)?.lifecycleScope?.launch {
-                val request = ContactRequestEntity(
-                    requestId = java.util.UUID.randomUUID().toString(),
-                    firstName = firstName,
-                    lastName = lastName,
-                    phone = phone,
-                    requestSource = "user",
-                    requestedAt = System.currentTimeMillis(),
-                    syncedToAgent = false,
-                    status = "pending"
-                )
-                database.contactRequestDao().insert(request)
+            val request = ContactRequestEntity(
+                requestId = java.util.UUID.randomUUID().toString(),
+                firstName = firstName,
+                lastName = lastName,
+                phone = phone,
+                requestSource = "user",
+                requestedAt = System.currentTimeMillis(),
+                syncedToAgent = false,
+                status = "pending"
+            )
+
+            if (context.config.demoMode) {
+                // In demo mode, add to session storage (in-memory only)
+                DemoDataProvider.addSessionRequest(request)
+                // Refresh the list to show the new request
+                observeRequests()
+            } else {
+                // Normal mode: save to database
+                (activity as? SimpleActivity)?.lifecycleScope?.launch {
+                    database.contactRequestDao().insert(request)
+                }
             }
         }
     }

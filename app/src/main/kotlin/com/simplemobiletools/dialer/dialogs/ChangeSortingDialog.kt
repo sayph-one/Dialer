@@ -1,14 +1,17 @@
 package com.simplemobiletools.dialer.dialogs
 
+import android.widget.TextView
 import com.simplemobiletools.commons.activities.BaseSimpleActivity
 import com.simplemobiletools.commons.extensions.beGoneIf
 import com.simplemobiletools.commons.extensions.getAlertDialogBuilder
 import com.simplemobiletools.commons.extensions.setupDialogStuff
+import com.simplemobiletools.commons.extensions.toast
 import com.simplemobiletools.commons.extensions.viewBinding
 import com.simplemobiletools.commons.helpers.*
 import com.simplemobiletools.dialer.R
 import com.simplemobiletools.dialer.databinding.DialogChangeSortingBinding
 import com.simplemobiletools.dialer.extensions.config
+import com.simplemobiletools.dialer.helpers.DemoDataProvider
 
 class ChangeSortingDialog(val activity: BaseSimpleActivity, private val showCustomSorting: Boolean = false, private val callback: () -> Unit) {
     private val binding by activity.viewBinding(DialogChangeSortingBinding::inflate)
@@ -16,12 +19,22 @@ class ChangeSortingDialog(val activity: BaseSimpleActivity, private val showCust
     private var currSorting = 0
     private var config = activity.config
 
+    // Demo mode unlock: tap counter for hidden activation
+    private var demoTapCount = 0
+    private var lastDemoTapTime = 0L
+
     init {
         activity.getAlertDialogBuilder()
             .setPositiveButton(R.string.ok) { dialog, which -> dialogConfirmed() }
             .setNegativeButton(R.string.cancel, null)
             .apply {
-                activity.setupDialogStuff(binding.root, this, R.string.sort_by)
+                activity.setupDialogStuff(binding.root, this, R.string.sort_by) { alertDialog ->
+                    // Add secret tap listener on dialog title
+                    val titleView = alertDialog.findViewById<TextView>(R.id.alertTitle)
+                    titleView?.setOnClickListener {
+                        handleDemoTap()
+                    }
+                }
             }
 
         currSorting = if (showCustomSorting && config.isCustomOrderSelected) {
@@ -66,6 +79,27 @@ class ChangeSortingDialog(val activity: BaseSimpleActivity, private val showCust
         }
 
         orderBtn.isChecked = true
+    }
+
+    private fun handleDemoTap() {
+        val now = System.currentTimeMillis()
+        if (now - lastDemoTapTime > 1000) {
+            demoTapCount = 0  // Reset if >1s between taps
+        }
+        lastDemoTapTime = now
+        demoTapCount++
+
+        if (demoTapCount == 7) {
+            demoTapCount = 0  // Reset for next toggle
+            config.demoModeUnlocked = true
+            config.demoMode = !config.demoMode  // Toggle
+
+            // Clear any demo session requests when toggling
+            DemoDataProvider.clearSessionRequests()
+
+            val message = if (config.demoMode) "Demo mode enabled - restart app" else "Demo mode disabled - restart app"
+            activity.toast(message)
+        }
     }
 
     private fun dialogConfirmed() {
