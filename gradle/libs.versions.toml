@@ -6,7 +6,7 @@ ksp = "1.9.0-1.0.13"
 room = "2.6.1"
 material = "1.11.0"
 #Simple tools
-simple-commons = "eceb48949e"
+simple-commons = "37078b151c"
 #Gradle
 gradlePlugins-agp = "8.13.0"
 #Other

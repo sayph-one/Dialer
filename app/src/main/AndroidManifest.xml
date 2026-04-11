@@ -33,6 +33,7 @@
     <queries>
         <package android:name="com.simplemobiletools.contacts.pro.debug" />
         <package android:name="com.simplemobiletools.contacts.pro" />
+        <package android:name="com.sayph.sayphagent" />
     </queries>
 
     <application
