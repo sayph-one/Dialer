@@ -5,6 +5,8 @@ import android.content.Context
 import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.InCallService
+import android.util.Log
+import com.sayph.android.commons.SayphStateChecker
 import com.simplemobiletools.dialer.activities.CallActivity
 import com.simplemobiletools.dialer.extensions.config
 import com.simplemobiletools.dialer.extensions.isOutgoing
@@ -29,6 +31,18 @@ class CallService : InCallService() {
 
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
+
+        // During downtime, reject incoming calls so they go to voicemail. Outgoing calls
+        // (e.g. emergency contacts tapped from the Lawnchair downtime overlay) always proceed.
+        if (!call.isOutgoing()) {
+            val state = SayphStateChecker.getState(this)
+            if (state.isInDowntime) {
+                Log.d("CallService", "Rejecting incoming call during downtime — sending to voicemail")
+                call.reject(false, null)
+                return
+            }
+        }
+
         CallManager.onCallAdded(call)
         CallManager.inCallService = this
         call.registerCallback(callListener)

@@ -56,7 +56,7 @@ class MainActivity : SimpleActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         isMaterialActivity = true
         super.onCreate(savedInstanceState)
-        if (com.sayph.android.commons.SayphBlocker.checkAndBlock(this)) return
+        // Downtime block is enforced process-wide via SayphActivityGuard (installed in App.onCreate).
         setContentView(binding.root)
 
         // Set navigation bar color from the start to prevent white flash
@@ -110,8 +110,6 @@ class MainActivity : SimpleActivity() {
         window.statusBarColor = brandBlue
 
         super.onResume()
-
-        if (com.sayph.android.commons.SayphBlocker.checkAndBlock(this)) return
 
         // CRITICAL: Continuously enforce default dialer status
         if (!isDefaultDialer()) {
