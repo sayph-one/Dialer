@@ -5,6 +5,7 @@ import android.content.Context
 import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.InCallService
+import android.telephony.PhoneNumberUtils
 import android.util.Log
 import com.sayph.android.commons.SayphStateChecker
 import com.simplemobiletools.dialer.activities.CallActivity
@@ -32,15 +33,10 @@ class CallService : InCallService() {
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
 
-        // During downtime, reject incoming calls so they go to voicemail. Outgoing calls
-        // (e.g. emergency contacts tapped from the Lawnchair downtime overlay) always proceed.
-        if (!call.isOutgoing()) {
-            val state = SayphStateChecker.getState(this)
-            if (state.isInDowntime) {
-                Log.d("CallService", "Rejecting incoming call during downtime — sending to voicemail")
-                call.reject(false, null)
-                return
-            }
+        if (shouldGateIncomingCall(call)) {
+            Log.d("CallService", "Rejecting incoming call — device locked, caller not in emergency contacts")
+            call.reject(false, null)
+            return
         }
 
         CallManager.onCallAdded(call)
@@ -59,6 +55,53 @@ class CallService : InCallService() {
         } else {
             callNotificationManager.setupNotification()
         }
+    }
+
+    /**
+     * Should this incoming call be rejected before it rings?
+     *
+     * Outgoing calls (e.g. emergency contact tapped on the Lawnchair downtime or set-up
+     * overlay) always proceed. Incoming calls are rejected when the device is in a locked
+     * state — downtime OR set-up incomplete (missing required permissions) — UNLESS the
+     * caller's number matches an emergency contact. Matching uses
+     * [PhoneNumberUtils.compare] which handles country-code, formatting, and partial-match
+     * differences ("+44 7123 456 789" vs "07123456789" etc.).
+     *
+     * Unknown callers (no handle / withheld number) are rejected when locked — the parent
+     * should call from a number that's registered as an emergency contact.
+     */
+    private fun shouldGateIncomingCall(call: Call): Boolean {
+        if (call.isOutgoing()) return false
+
+        val state = SayphStateChecker.getState(this)
+        val isLocked = state.isInDowntime || !state.permissionsOk
+        if (!isLocked) return false
+
+        val callerNumber = try {
+            call.details?.handle?.schemeSpecificPart
+        } catch (e: Exception) {
+            null
+        }
+        if (callerNumber.isNullOrBlank()) {
+            Log.d("CallService", "Locked + no caller number — rejecting")
+            return true
+        }
+
+        val contacts = try {
+            SayphStateChecker.getEmergencyContacts(this)
+        } catch (e: Exception) {
+            Log.w("CallService", "Failed to read emergency contacts; defaulting to reject", e)
+            emptyList()
+        }
+
+        val matches = contacts.any { PhoneNumberUtils.compare(it.phone, callerNumber) }
+        if (matches) {
+            Log.d("CallService", "Caller $callerNumber matches an emergency contact — letting through")
+            return false
+        }
+
+        Log.d("CallService", "Caller $callerNumber not in emergency contacts — rejecting")
+        return true
     }
 
     override fun onCallRemoved(call: Call) {
