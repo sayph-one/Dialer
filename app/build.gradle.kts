@@ -102,7 +102,7 @@ android {
 
 dependencies {
     implementation(libs.simple.tools.commons)
-    implementation("com.sayph.android:commons:0.3.0")
+    implementation("com.sayph.android:commons:0.4.0")
     implementation(libs.indicator.fast.scroll)
     implementation(libs.autofit.text.view)
     implementation(libs.kotlinx.serialization.json)
