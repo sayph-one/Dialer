@@ -56,6 +56,7 @@ class MainActivity : SimpleActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         isMaterialActivity = true
         super.onCreate(savedInstanceState)
+        // Downtime block is enforced process-wide via SayphActivityGuard (installed in App.onCreate).
         setContentView(binding.root)
 
         // Set navigation bar color from the start to prevent white flash

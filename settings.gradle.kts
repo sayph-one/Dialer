@@ -11,6 +11,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        mavenLocal() // Sayph AndroidCommons library
         maven { setUrl("https://jitpack.io") }
     }
 }
